@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Tareas del proyecto</title>
+</head>
+<body>
+<h1 th:text="'Tareas del proyecto: ' + ${project.name}"></h1>
+
+<a th:href="@{'/tasks/add/' + ${project.id}}">+ Nueva tarea</a> |
+<a th:href="@{/projects}">Volver a proyectos</a>
+
+<table border="1" cellpadding="5">
+    <thead>
+        <tr>
+            <th>Nº Tarea</th>
+            <th>Título</th>
+            <th>Descripción</th>
+            <th>Fecha límite</th>
+            <th>Completada</th>
+            <th>Acciones</th>
+        </tr>
+    </thead>
+    <tbody>
+       <!-- Si no hay tareas -->
+        <tr th:if="${#lists.isEmpty(tasks)}">
+            <td colspan="6">No hay tareas registradas</td>
+        </tr>
+        <!-- Listado de tareas -->
+        <tr th:each="task : ${tasks}">
+            <td th:text="${task.taskNumber}"></td>
+            <td th:text="${task.title}"></td>
+            <td th:text="${task.description}"></td>
+            <td th:text="${task.dueDate} ?: '-'"></td>
+            <td th:text="${task.completed ? 'Sí' : 'No'}"></td>
+            <td>
+                <a th:href="@{'/tasks/edit/' + ${task.id}}">Editar</a> |
+                <a th:href="@{'/tasks/toggle/' + ${task.id}}">Cambiar estado</a> |
+                <a th:href="@{'/tasks/delete/' + ${task.id}}"
+                onclick="return confirm('¿Seguro que deseas eliminar esta tarea?')">Eliminar</a>
+            </td>
+
+        </tr>
+    </tbody>
+</table>
+</body>
+</html>

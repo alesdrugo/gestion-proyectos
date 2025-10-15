@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+    <head>
+        <meta charset="UTF-8">
+        <title th:text="${task.id} != null ? 'Editar tarea' : 'Nueva tarea'"></title>
+        <script>
+            function validarFecha() {
+                const fecha = document.getElementById("dueDate").value;
+                const hoy = new Date().toISOString().split("T")[0];
+                if (fecha && fecha < hoy) {
+                    alert("⚠️ La fecha límite no puede ser anterior a hoy.");
+                    return false;
+                }
+                return true;
+            }
+        </script>
+    </head>
+    <body>
+
+        <h1 th:text="${task.id} != null ? 'Editar tarea de: ' + ${project.name} : 'Añadir tarea al proyecto: ' + ${project.name}"></h1>
+
+
+        <form th:action="${task.id} != null ? @{'/tasks/update/' + ${task.id}} : @{/tasks/save}"
+      th:object="${task}" method="post" onsubmit="return validarFecha()">
+
+            <input type="hidden" th:field="*{project.id}" />
+
+            <label for="title">Título:</label><br>
+            <input type="text" id="title" th:field="*{title}" required><br><br>
+
+            <label for="description">Descripción:</label><br>
+            <textarea id="description" th:field="*{description}" rows="4" cols="50"></textarea><br><br>
+
+            <label for="dueDate">Fecha límite:</label><br>
+            <input type="date" id="dueDate" th:field="*{dueDate}"><br><br>
+            
+            <label for="completed">Completada:</label>
+            <input type="checkbox" id="completed" th:field="*{completed}"><br><br>
+
+            <button type="submit" th:text="${task.id} != null ? 'Guardar cambios' : 'Guardar tarea'"></button>
+        </form>
+
+        <br>
+        <a th:href="@{'/tasks/' + ${task.project.id}}">Volver</a>
+    </body>
+</html>
