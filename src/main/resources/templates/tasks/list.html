@@ -1,47 +1,92 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
-    <meta charset="UTF-8">
-    <title>Tareas del proyecto</title>
+  <meta charset="UTF-8">
+  <title>Tareas del proyecto</title>
 </head>
 <body>
-<h1 th:text="'Tareas del proyecto: ' + ${project.name}"></h1>
 
-<a th:href="@{'/tasks/add/' + ${project.id}}">+ Nueva tarea</a> |
-<a th:href="@{/projects}">Volver a proyectos</a>
+  <p>
+    Sesión: <strong th:text="${session.username}">usuario</strong>
+    <a href="/logout">Cerrar sesión</a>
+  </p>
 
-<table border="1" cellpadding="5">
+  <h1 th:text="'Tareas del proyecto: ' + ${project.name}"></h1>
+
+  <!-- Solo el admin puede añadir tareas -->
+  <div th:if="${session.isAdmin}">
+    <a th:href="@{'/tasks/add/' + ${project.id}}">+ Nueva tarea</a> |
+  </div>
+
+  <a th:href="@{/projects}">Volver a proyectos</a>
+
+  <table border="1" cellpadding="5" cellspacing="0">
     <thead>
-        <tr>
-            <th>Nº Tarea</th>
-            <th>Título</th>
-            <th>Descripción</th>
-            <th>Fecha límite</th>
-            <th>Completada</th>
-            <th>Acciones</th>
-        </tr>
+      <tr>
+        <th>Nº</th>
+        <th>Título</th>
+        <th>Descripción</th>
+        <th>Asignado a</th>
+        <th>Fecha límite</th>
+        <th>Estado</th>
+        <th>Acciones</th>
+        <th>Documentación</th>
+      </tr>
     </thead>
     <tbody>
-       <!-- Si no hay tareas -->
-        <tr th:if="${#lists.isEmpty(tasks)}">
-            <td colspan="6">No hay tareas registradas</td>
-        </tr>
-        <!-- Listado de tareas -->
-        <tr th:each="task : ${tasks}">
-            <td th:text="${task.taskNumber}"></td>
-            <td th:text="${task.title}"></td>
-            <td th:text="${task.description}"></td>
-            <td th:text="${task.dueDate} ?: '-'"></td>
-            <td th:text="${task.completed ? 'Sí' : 'No'}"></td>
-            <td>
-                <a th:href="@{'/tasks/edit/' + ${task.id}}">Editar</a> |
-                <a th:href="@{'/tasks/toggle/' + ${task.id}}">Cambiar estado</a> |
-                <a th:href="@{'/tasks/delete/' + ${task.id}}"
-                onclick="return confirm('¿Seguro que deseas eliminar esta tarea?')">Eliminar</a>
-            </td>
+      <!-- Si no hay tareas -->
+      <tr th:if="${#lists.isEmpty(tasks)}">
+        <td colspan="8">No hay tareas registradas</td>
+      </tr>
 
-        </tr>
+      <!-- Listado de tareas -->
+      <tr th:each="task : ${tasks}">
+        <td th:text="${task.taskNumber}"></td>
+        <td th:text="${task.title}"></td>
+        <td th:text="${task.description}"></td>
+        <td th:text="${task.assignedUser != null ? task.assignedUser.username : '-'}"></td>
+        <td th:text="${task.dueDate != null ? task.dueDate : '-'}"></td>
+        <td th:text="${task.completed ? '✅ Completada' : '⏳ Pendiente'}"></td>
+
+        <!-- Acciones -->
+        <td>
+          <!-- Botón de cambio de estado -->
+          <form th:if="${session.isAdmin or (task.assignedUser != null and task.assignedUser.username == session.username)}"
+                th:action="@{'/tasks/toggle/' + ${task.id}}" method="get" style="display:inline">
+            <button type="submit"
+                    th:text="${task.completed ? 'Marcar pendiente' : 'Marcar completada'}"></button>
+          </form>
+
+          <!-- Acciones solo para admin -->
+          <span th:if="${session.isAdmin}">
+            | <a th:href="@{'/tasks/edit/' + ${task.id}}">Editar</a>
+            | <a th:href="@{'/tasks/delete/' + ${task.id}}"
+                 onclick="return confirm('¿Seguro que deseas eliminar esta tarea?')">Eliminar</a>
+          </span>
+        </td>
+
+        <!-- Documentación -->
+        <td>
+          <div th:if="${task.attachmentPath != null}">
+            <a th:href="@{${task.attachmentPath}}" target="_blank">📎 Ver archivo</a>
+          </div>
+          <div th:if="${task.attachmentPath == null}">
+            <span>-</span>
+          </div>
+
+          <!-- 👇 Subir / actualizar documento (solo admin) -->
+          <form th:if="${session.isAdmin}"
+                th:action="@{'/tasks/' + ${task.id} + '/upload'}"
+                method="post"
+                enctype="multipart/form-data"
+                style="margin-top:5px;">
+            <input type="file" name="file" accept=".pdf,.doc,.docx,.jpg,.png" required>
+            <button type="submit">Actualizar documento</button>
+          </form>
+        </td>
+      </tr>
     </tbody>
-</table>
+  </table>
+
 </body>
 </html>

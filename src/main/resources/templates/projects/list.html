@@ -5,36 +5,50 @@
     <title>Gestión de Proyectos</title>
 </head>
 <body>
-<h1>Gestión de Proyectos</h1>
+    <p>
+        Sesión: <strong th:text="${username}">usuario</strong>
+        (<span th:text="${isAdmin} ? 'Administrador' : 'Usuario'"></span>)
+        | <a href="/logout">Cerrar sesión</a>
+    </p>
 
-<a th:href="@{/projects/new}">+ Nuevo proyecto</a>
+    <h1>Gestión de Proyectos</h1>
 
-<table border="1" cellpadding="5">
-    <thead>
-        <tr>
-            <th>ID</th>
-            <th>Nombre</th>
-            <th>Descripción</th>
-            <th>Estado</th>
-            <th>Acciones</th>
-        </tr>
-    </thead>
-    <tbody>
-        <tr th:if="${#lists.isEmpty(projects)}">
-            <td colspan="5">No hay proyectos registrados</td>
-        </tr>
-        <tr th:each="project : ${projects}">
-            <td th:text="${project.id}"></td>
-            <td th:text="${project.name}"></td>
-            <td th:text="${project.description}"></td>
-            <td th:text="${project.status}"></td>
-            <td>
-                <a th:href="@{'/tasks/' + ${project.id}}">Ver tareas</a> |
-                <a th:href="@{'/projects/delete/' + ${project.id}}">Eliminar</a>
-            </td>
-        </tr>
-    </tbody>
-</table>
+    <!-- Solo admin puede crear -->
+    <p th:if="${isAdmin}">
+        <a th:href="@{/projects/new}">+ Nuevo proyecto</a>
+    </p>
 
+    <table border="1" cellpadding="5" cellspacing="0">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Nombre</th>
+                <th>Descripción</th>
+                <th>Estado</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr th:if="${#lists.isEmpty(projects)}">
+                <td colspan="5">No hay proyectos registrados</td>
+            </tr>
+            <tr th:each="project : ${projects}">
+                <td th:text="${project.id}"></td>
+                <td th:text="${project.name}"></td>
+                <td th:text="${project.description}"></td>
+                <td th:text="${project.status}"></td>
+                <td>
+                    <a th:href="@{'/tasks/' + ${project.id}}">Ver tareas</a>
+                    <span th:if="${isAdmin}">
+                        | <a th:href="@{'/projects/edit/' + ${project.id}}">Editar</a>
+                        |<a th:href="@{'/projects/delete/' + ${project.id}}"
+                           onclick="return confirm('¿Seguro que deseas eliminar este proyecto?')">
+                           Eliminar
+                        </a>
+                    </span>
+                </td>
+            </tr>
+        </tbody>
+    </table>
 </body>
 </html>

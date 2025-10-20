@@ -5,8 +5,9 @@ import lombok.Data;
 import java.time.LocalDate;
 import java.util.List;
 
-@Data
 @Entity
+@Table(name = "projects")
+@Data
 public class Project {
 
     @Id
@@ -17,8 +18,8 @@ public class Project {
     private String description;
     private LocalDate startDate;
     private LocalDate endDate;
-    private String status;  // Ejemplo: "En curso", "Completado", "Pendiente"
-    
-    @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, orphanRemoval = true)
+    private String status;
+
+    @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<Task> tasks;
 }

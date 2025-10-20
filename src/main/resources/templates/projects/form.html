@@ -5,26 +5,33 @@
     <title>Nuevo Proyecto</title>
 </head>
 <body>
-<h1>Crear nuevo proyecto</h1>
+    <p>
+        Sesión: <strong th:text="${username}">usuario</strong>
+        (<span th:text="${isAdmin} ? 'Administrador' : 'Usuario'"></span>)
+        | <a href="/logout">Cerrar sesión</a>
+    </p>
 
-<form th:action="@{/projects}" th:object="${project}" method="post">
-    <label>Nombre:</label>
-    <input type="text" th:field="*{name}" required><br><br>
+    <h1>Crear nuevo proyecto</h1>
 
-    <label>Descripción:</label>
-    <textarea th:field="*{description}"></textarea><br><br>
+    <form th:action="${project.id} != null ? @{'/projects/update/' + ${project.id}} : @{/projects}" 
+      th:object="${project}" method="post">
+        <label for="name">Nombre:</label><br>
+        <input type="text" id="name" th:field="*{name}" required><br><br>
 
-    <label>Estado:</label>
-    <select th:field="*{status}">
-        <option value="Pendiente">Pendiente</option>
-        <option value="En progreso">En progreso</option>
-        <option value="Completado">Completado</option>
-    </select><br><br>
+        <label for="description">Descripción:</label><br>
+        <textarea id="description" th:field="*{description}" rows="4" cols="50"></textarea><br><br>
 
-    <button type="submit">Guardar</button>
-</form>
+        <label for="status">Estado:</label><br>
+        <select id="status" th:field="*{status}">
+            <option value="Pendiente">Pendiente</option>
+            <option value="En progreso">En progreso</option>
+            <option value="Completado">Completado</option>
+        </select><br><br>
 
-<br>
-<a th:href="@{/projects}">Volver</a>
+        <button type="submit">Guardar</button>
+    </form>
+
+    <br>
+    <a th:href="@{/projects}">Volver</a>
 </body>
 </html>

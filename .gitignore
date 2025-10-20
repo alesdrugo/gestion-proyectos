@@ -13,6 +13,14 @@ target/
 .springBeans
 .sts4-cache
 
+# === Java / Spring Boot ===
+target/
+*.jar
+*.war
+*.ear
+*.class
+
+
 ### IntelliJ IDEA ###
 .idea
 *.iws
@@ -31,3 +39,4 @@ build/
 
 ### VS Code ###
 .vscode/
+

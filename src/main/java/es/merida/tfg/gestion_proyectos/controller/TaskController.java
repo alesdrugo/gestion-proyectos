@@ -1,29 +1,40 @@
 package es.merida.tfg.gestion_proyectos.controller;
 
 import java.util.List;
+import java.io.IOException;
+import java.nio.file.*;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import es.merida.tfg.gestion_proyectos.model.Project;
 import es.merida.tfg.gestion_proyectos.model.Task;
+import es.merida.tfg.gestion_proyectos.model.User;
 import es.merida.tfg.gestion_proyectos.repository.ProjectRepository;
 import es.merida.tfg.gestion_proyectos.repository.TaskRepository;
+import es.merida.tfg.gestion_proyectos.repository.UserRepository;
+import jakarta.servlet.http.HttpSession;
 
 @Controller
 @RequestMapping("/tasks")
 public class TaskController {
 
-    @Autowired
-    private TaskRepository taskRepository;
+    @Autowired private TaskRepository taskRepository;
+    @Autowired private ProjectRepository projectRepository;
+    @Autowired private UserRepository userRepository;
 
-    @Autowired
-    private ProjectRepository projectRepository;
-
+    // ============================
+    // 🔹 LISTADO DE TAREAS
+    // ============================
     @GetMapping("/{projectId}")
-    public String listTasks(@PathVariable Long projectId, Model model) {
+    public String listTasks(@PathVariable Long projectId, Model model, HttpSession session) {
+        if (session == null || session.getAttribute("username") == null)
+            return "redirect:/login";
+
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new IllegalArgumentException("Proyecto no encontrado: " + projectId));
 
@@ -31,14 +42,23 @@ public class TaskController {
 
         model.addAttribute("project", project);
         model.addAttribute("tasks", tasks);
-        model.addAttribute("newTask", new Task());
+        model.addAttribute("username", session.getAttribute("username"));
+        model.addAttribute("isAdmin", session.getAttribute("isAdmin"));
 
         return "tasks/list";
     }
 
-    // Formulario para crear nueva tarea
+    // ============================
+    // 🔹 FORMULARIO NUEVA TAREA
+    // ============================
     @GetMapping("/add/{projectId}")
-    public String showAddForm(@PathVariable Long projectId, Model model) {
+    public String showAddForm(@PathVariable Long projectId, Model model, HttpSession session) {
+        if (session == null || session.getAttribute("username") == null)
+            return "redirect:/login";
+
+        if (!Boolean.TRUE.equals(session.getAttribute("isAdmin")))
+            return "redirect:/projects";
+
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new IllegalArgumentException("Proyecto no encontrado: " + projectId));
 
@@ -47,73 +67,134 @@ public class TaskController {
 
         model.addAttribute("project", project);
         model.addAttribute("task", task);
+        model.addAttribute("users", userRepository.findAll());
+        model.addAttribute("username", session.getAttribute("username"));
 
         return "tasks/form";
     }
 
+    // ============================
+    // 🔹 GUARDAR NUEVA TAREA
+    // ============================
+    @PostMapping(value = "/add/{projectId}", consumes = {"multipart/form-data"})
+    public String addTask(@PathVariable Long projectId,
+                          @ModelAttribute Task task,
+                          @RequestParam(value = "file", required = false) MultipartFile file,
+                          HttpSession session) throws IOException {
 
-    // Guardar tarea en la base de datos
-    /*@PostMapping("/save")
-    public String saveTask(@ModelAttribute("task") Task task) {
-        taskRepository.save(task);
-        return "redirect:/tasks/" + task.getProject().getId();
-    }*/
+        if (session == null || session.getAttribute("username") == null)
+            return "redirect:/login";
 
+        if (!Boolean.TRUE.equals(session.getAttribute("isAdmin")))
+            return "redirect:/projects";
 
-
-    @PostMapping("/add/{projectId}")
-    public String addTask(@PathVariable Long projectId, @ModelAttribute Task task) {
         Project project = projectRepository.findById(projectId).orElseThrow();
-
-            // Obtener las tareas actuales del proyecto
-        List<Task> existingTasks = taskRepository.findByProject(project);
-
-        // 🧠 Calcular siguiente número
         int nextNumber = taskRepository.findMaxTaskNumberByProject(project) + 1;
-        System.out.println("Alex!!!!!!!!!!!!! "+ taskRepository.findMaxTaskNumberByProject(project) + 1);
-        /*int nextNumber = existingTasks.stream()
-            .map(Task::getTaskNumber)
-            .filter(Objects::nonNull)
-            .max(Integer::compareTo)
-            .orElse(0) + 1;
-        */
+
         task.setTaskNumber(nextNumber);
-
         task.setProject(project);
-        taskRepository.save(task);
 
+        if (task.getAssignedUser() != null && task.getAssignedUser().getId() != null) {
+            User user = userRepository.findById(task.getAssignedUser().getId()).orElse(null);
+            task.setAssignedUser(user);
+        }
+
+        // 📎 Guardar fichero si viene
+        if (file != null && !file.isEmpty()) {
+            String url = saveFileAndGetPublicUrl(file);
+            task.setAttachmentPath(url);
+            System.out.println("📎 Archivo subido para nueva tarea: " + url);
+        }
+
+        taskRepository.save(task);
         return "redirect:/tasks/" + projectId;
     }
 
-    @GetMapping("/toggle/{taskId}")
-    public String toggleTask(@PathVariable Long taskId) {
+    // ============================
+    // 🔹 SUBIR / ACTUALIZAR DOCUMENTO DESDE LISTA
+    // ============================
+    @PostMapping(value = "/{taskId}/upload", consumes = {"multipart/form-data"})
+    public String uploadAttachment(@PathVariable Long taskId,
+                                   @RequestParam("file") MultipartFile file,
+                                   HttpSession session) throws IOException {
+        if (session == null || session.getAttribute("username") == null)
+            return "redirect:/login";
+
+        if (!Boolean.TRUE.equals(session.getAttribute("isAdmin")))
+            return "redirect:/projects";
+
         Task task = taskRepository.findById(taskId).orElseThrow();
+
+        if (file != null && !file.isEmpty()) {
+            String url = saveFileAndGetPublicUrl(file);
+            task.setAttachmentPath(url);
+            taskRepository.save(task);
+            System.out.println("📎 Archivo subido para tarea " + taskId + ": " + url);
+        }
+
+        return "redirect:/tasks/" + task.getProject().getId();
+    }
+
+    // ============================
+    // 🔹 CAMBIAR ESTADO (toggle)
+    // ============================
+    @GetMapping("/toggle/{taskId}")
+    public String toggleTask(@PathVariable Long taskId, HttpSession session) {
+        if (session == null || session.getAttribute("username") == null)
+            return "redirect:/login";
+
+        Task task = taskRepository.findById(taskId).orElseThrow();
+        String currentUser = (String) session.getAttribute("username");
+        boolean isAdmin = Boolean.TRUE.equals(session.getAttribute("isAdmin"));
+        boolean isOwner = task.getAssignedUser() != null &&
+                          task.getAssignedUser().getUsername().equals(currentUser);
+
+        // 🔒 Solo admin o usuario asignado puede cambiar estado
+        if (!isAdmin && !isOwner)
+            return "redirect:/tasks/" + task.getProject().getId();
+
         task.setCompleted(!task.isCompleted());
         taskRepository.save(task);
+
         return "redirect:/tasks/" + task.getProject().getId();
     }
 
-    @GetMapping("/delete/{taskId}")
-    public String deleteTask(@PathVariable Long taskId) {
-        Task task = taskRepository.findById(taskId).orElseThrow();
-        Long projectId = task.getProject().getId();
-        taskRepository.delete(task);
-        return "redirect:/tasks/" + projectId;
-    }
-
-    // Mostrar formulario de edición
+    // ============================
+    // 🔹 EDITAR TAREA
+    // ============================
     @GetMapping("/edit/{taskId}")
-    public String showEditForm(@PathVariable Long taskId, Model model) {
+    public String showEditForm(@PathVariable Long taskId, Model model, HttpSession session) {
+        if (session == null || session.getAttribute("username") == null)
+            return "redirect:/login";
+
+        if (!Boolean.TRUE.equals(session.getAttribute("isAdmin")))
+            return "redirect:/projects";
+
         Task task = taskRepository.findById(taskId)
                 .orElseThrow(() -> new IllegalArgumentException("Tarea no encontrada: " + taskId));
+
         model.addAttribute("task", task);
         model.addAttribute("project", task.getProject());
+        model.addAttribute("users", userRepository.findAll());
+        model.addAttribute("username", session.getAttribute("username"));
+
         return "tasks/form";
     }
 
-    // Guardar cambios de la edición
-    @PostMapping("/update/{taskId}")
-    public String updateTask(@PathVariable Long taskId, @ModelAttribute Task updatedTask) {
+    // ============================
+    // 🔹 GUARDAR CAMBIOS EN TAREA
+    // ============================
+    @PostMapping(value = "/update/{taskId}", consumes = {"multipart/form-data"})
+    public String updateTask(@PathVariable Long taskId,
+                             @ModelAttribute Task updatedTask,
+                             @RequestParam(value = "file", required = false) MultipartFile file,
+                             HttpSession session) throws IOException {
+        if (session == null || session.getAttribute("username") == null)
+            return "redirect:/login";
+
+        if (!Boolean.TRUE.equals(session.getAttribute("isAdmin")))
+            return "redirect:/projects";
+
         Task existingTask = taskRepository.findById(taskId)
                 .orElseThrow(() -> new IllegalArgumentException("Tarea no encontrada: " + taskId));
 
@@ -122,8 +203,52 @@ public class TaskController {
         existingTask.setDueDate(updatedTask.getDueDate());
         existingTask.setCompleted(updatedTask.isCompleted());
 
-        taskRepository.save(existingTask);
+        if (updatedTask.getAssignedUser() != null && updatedTask.getAssignedUser().getId() != null) {
+            User user = userRepository.findById(updatedTask.getAssignedUser().getId()).orElse(null);
+            existingTask.setAssignedUser(user);
+        }
 
+        if (file != null && !file.isEmpty()) {
+            String url = saveFileAndGetPublicUrl(file);
+            existingTask.setAttachmentPath(url);
+            System.out.println("📎 Archivo reemplazado para tarea " + taskId + ": " + url);
+        }
+
+        taskRepository.save(existingTask);
         return "redirect:/tasks/" + existingTask.getProject().getId();
+    }
+
+    // ============================
+    // 🔹 ELIMINAR TAREA
+    // ============================
+    @GetMapping("/delete/{taskId}")
+    public String deleteTask(@PathVariable Long taskId, HttpSession session) {
+        if (session == null || session.getAttribute("username") == null)
+            return "redirect:/login";
+
+        if (!Boolean.TRUE.equals(session.getAttribute("isAdmin")))
+            return "redirect:/projects";
+
+        Task task = taskRepository.findById(taskId).orElseThrow();
+        Long projectId = task.getProject().getId();
+        taskRepository.delete(task);
+
+        return "redirect:/tasks/" + projectId;
+    }
+
+    // ============================
+    // 🔹 UTILIDAD: GUARDAR ARCHIVO
+    // ============================
+    private String saveFileAndGetPublicUrl(MultipartFile file) throws IOException {
+        String original = StringUtils.cleanPath(file.getOriginalFilename());
+        String filename = System.currentTimeMillis() + "_" + original;
+
+        Path uploadDir = Paths.get("uploads").toAbsolutePath().normalize();
+        Files.createDirectories(uploadDir);
+
+        Path target = uploadDir.resolve(filename);
+        file.transferTo(target.toFile());
+
+        return "/uploads/" + filename;
     }
 }
