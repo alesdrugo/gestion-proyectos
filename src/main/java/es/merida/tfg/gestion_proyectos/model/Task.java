@@ -39,4 +39,8 @@ public class Task {
 
     @Column(name = "attachment_path")
     private String attachmentPath;
+
+    @OneToMany(mappedBy = "task", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("createdAt DESC")
+    private java.util.List<Comment> comments;
 }

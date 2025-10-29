@@ -31,23 +31,41 @@ public class TaskController {
     // 🔹 LISTADO DE TAREAS
     // ============================
     @GetMapping("/{projectId}")
-    public String listTasks(@PathVariable Long projectId, Model model, HttpSession session) {
-        if (session == null || session.getAttribute("username") == null)
-            return "redirect:/login";
+public String listTasks(@PathVariable Long projectId,
+                        @RequestParam(required = false) String status,
+                        @RequestParam(required = false) Long assigneeId,
+                        Model model, HttpSession session) {
+    if (session == null || session.getAttribute("username") == null)
+        return "redirect:/login";
 
-        Project project = projectRepository.findById(projectId)
-                .orElseThrow(() -> new IllegalArgumentException("Proyecto no encontrado: " + projectId));
+    var project = projectRepository.findById(projectId)
+            .orElseThrow(() -> new IllegalArgumentException("Proyecto no encontrado: " + projectId));
 
-        List<Task> tasks = taskRepository.findByProject(project);
+    List<Task> tasks;
+    var maybeUser = (assigneeId != null) ? userRepository.findById(assigneeId) : java.util.Optional.empty();
 
-        model.addAttribute("project", project);
-        model.addAttribute("tasks", tasks);
-        model.addAttribute("username", session.getAttribute("username"));
-        model.addAttribute("isAdmin", session.getAttribute("isAdmin"));
-
-        return "tasks/list";
+    if (status != null && status.equalsIgnoreCase("completada") && maybeUser.isPresent()) {
+        tasks = taskRepository.findByProjectAndCompletedAndAssignedUser(project, true, (User)maybeUser.get());
+    } else if (status != null && status.equalsIgnoreCase("completada")) {
+        tasks = taskRepository.findByProjectAndCompleted(project, true);
+    } else if (status != null && status.equalsIgnoreCase("pendiente") && maybeUser.isPresent()) {
+        tasks = taskRepository.findByProjectAndCompletedAndAssignedUser(project, false, (User)maybeUser.get());
+    } else if (maybeUser.isPresent()) {
+        tasks = taskRepository.findByProjectAndAssignedUser(project, (User)maybeUser.get());
+    } else {
+        tasks = taskRepository.findByProject(project);
     }
 
+    model.addAttribute("project", project);
+    model.addAttribute("tasks", tasks);
+    model.addAttribute("users", userRepository.findAll());
+    model.addAttribute("username", session.getAttribute("username"));
+    model.addAttribute("isAdmin", session.getAttribute("isAdmin"));
+    model.addAttribute("filterStatus", status);
+    model.addAttribute("filterAssigneeId", assigneeId);
+
+    return "tasks/list";
+}
     // ============================
     // 🔹 FORMULARIO NUEVA TAREA
     // ============================

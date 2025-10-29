@@ -1,0 +1,10 @@
+.git
+target
+data
+uploads
+node_modules
+*.iml
+.idea
+*.log
+readme.properties
+.env

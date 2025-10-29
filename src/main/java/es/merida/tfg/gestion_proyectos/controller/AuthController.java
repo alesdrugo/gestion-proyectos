@@ -43,7 +43,7 @@ public class AuthController {
             session.setAttribute("isAdmin", isAdmin);
             System.out.println("✅ Login correcto. Rol admin: " + isAdmin);
 
-            return "redirect:/projects";
+            return "redirect:/dashboard";
         } else {
             model.addAttribute("error", "Usuario o contraseña incorrectos");
             return "login";
