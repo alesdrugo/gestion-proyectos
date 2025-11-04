@@ -1,56 +1,51 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>Tareas del proyecto</title>
-
   <!-- Bootstrap 5 -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
 </head>
-
 <body class="bg-light">
-  <div class="container mt-5">
+
+  
+<div th:replace="~{fragments/navbar :: navbar}"></div>
+
+  <main class="container my-4">
 
     <!-- Cabecera -->
     <div class="d-flex justify-content-between align-items-center mb-4">
-      <h2 class="text-primary" th:text="'📋 Tareas del proyecto: ' + ${project.name}"></h2>
-      <div>
-        <span class="me-3">
-          👤 <strong th:text="${username}">usuario</strong>
-          (<span th:text="${isAdmin} ? 'Administrador' : 'Usuario'"></span>)
-        </span>
-        <a href="/logout" class="btn btn-outline-danger btn-sm">Cerrar sesión</a>
+      <h2 class="text-primary mb-0" th:text="'📋 Tareas del proyecto: ' + ${project.name}"></h2>
+      <div class="d-flex">
+        <a href="/dashboard" class="btn btn-outline-secondary btn-sm me-2">🏠 Dashboard</a>
+        <div th:if="${isAdmin}">
+          <a th:href="@{'/tasks/add/' + ${project.id}}" class="btn btn-success btn-sm">➕ Nueva tarea</a>
+        </div>
       </div>
     </div>
 
-    <!-- Acciones superiores -->
-    <div class="d-flex justify-content-between align-items-center mb-3">
-      <a th:href="@{/projects}" class="btn btn-secondary btn-sm">← Volver a proyectos</a>
-      <div th:if="${isAdmin}">
-        <a th:href="@{'/tasks/add/' + ${project.id}}" class="btn btn-success btn-sm">➕ Nueva tarea</a>
-      </div>
-    </div>
-
+    <!-- Filtros -->
     <form class="row g-2 mb-3" th:action="@{'/tasks/' + ${project.id}}" method="get">
-  <div class="col-auto">
-    <select class="form-select form-select-sm" name="status">
-      <option th:value="" th:selected="${filterStatus == null}">Todos</option>
-      <option th:value="pendiente" th:selected="${filterStatus == 'pendiente'}">Pendiente</option>
-      <option th:value="completada" th:selected="${filterStatus == 'completada'}">Completada</option>
-    </select>
-  </div>
-  <div class="col-auto">
-    <select class="form-select form-select-sm" name="assigneeId">
-      <option th:value="" th:selected="${filterAssigneeId == null}">Cualquiera</option>
-      <option th:each="u : ${users}" th:value="${u.id}"
-              th:text="${u.username}" th:selected="${filterAssigneeId == u.id}"></option>
-    </select>
-  </div>
-  <div class="col-auto">
-    <button class="btn btn-sm btn-primary" type="submit">Filtrar</button>
-    <a class="btn btn-sm btn-outline-secondary" th:href="@{'/tasks/' + ${project.id}}">Limpiar</a>
-  </div>
-</form>
+      <div class="col-auto">
+        <select class="form-select form-select-sm" name="status">
+          <option value="" th:selected="${filterStatus == null}">Todos</option>
+          <option value="pendiente" th:selected="${filterStatus == 'pendiente'}">Pendiente</option>
+          <option value="completada" th:selected="${filterStatus == 'completada'}">Completada</option>
+        </select>
+      </div>
+      <div class="col-auto">
+        <select class="form-select form-select-sm" name="assigneeId">
+          <option value="" th:selected="${filterAssigneeId == null}">Cualquiera</option>
+          <option th:each="u : ${users}" th:value="${u.id}"
+                  th:text="${u.username}" th:selected="${filterAssigneeId == u.id}"></option>
+        </select>
+      </div>
+      <div class="col-auto">
+        <button class="btn btn-sm btn-primary" type="submit">Filtrar</button>
+        <a class="btn btn-sm btn-outline-secondary" th:href="@{'/tasks/' + ${project.id}}">Limpiar</a>
+        <a class="btn btn-sm btn-outline-dark" th:href="@{'/projects'}">← Volver a proyectos</a>
+      </div>
+    </form>
 
     <!-- Tabla de tareas -->
     <div class="card shadow-sm">
@@ -84,11 +79,8 @@
                 <td th:text="${task.title}">Título</td>
                 <td th:text="${task.description}">Descripción</td>
 
-                <td class="text-center"
-                    th:text="${task.assignedUser != null ? task.assignedUser.username : '-'}">-</td>
-
-                <td class="text-center"
-                    th:text="${task.dueDate != null ? task.dueDate : '-'}">-</td>
+                <td class="text-center" th:text="${task.assignedUser != null ? task.assignedUser.username : '-'}">-</td>
+                <td class="text-center" th:text="${task.dueDate != null ? task.dueDate : '-'}">-</td>
 
                 <!-- Estado -->
                 <td class="text-center">
@@ -98,22 +90,20 @@
 
                 <!-- Acciones -->
                 <td class="text-center">
-                  <!-- Toggle: admin o dueño -->
+                  <a th:href="@{'/tasks/view/' + ${task.id}}" class="btn btn-sm btn-outline-info me-1">👁 Ver</a>
+
                   <form class="d-inline"
                         th:if="${isAdmin or (task.assignedUser != null and task.assignedUser.username == username)}"
                         th:action="@{'/tasks/toggle/' + ${task.id}}"
                         method="get">
-                    <button type="submit"
-                            class="btn btn-sm btn-outline-primary"
+                    <button type="submit" class="btn btn-sm btn-outline-primary"
                             th:text="${task.completed ? '↩️ Marcar pendiente' : '✅ Marcar completada'}">
                       Cambiar
                     </button>
                   </form>
 
-                  <!-- Editar / Eliminar solo admin -->
                   <span th:if="${isAdmin}">
-                    <a th:href="@{'/tasks/edit/' + ${task.id}}"
-                       class="btn btn-sm btn-outline-warning ms-1">✏️ Editar</a>
+                    <a th:href="@{'/tasks/edit/' + ${task.id}}" class="btn btn-sm btn-outline-warning ms-1">✏️ Editar</a>
                     <a th:href="@{'/tasks/delete/' + ${task.id}}"
                        class="btn btn-sm btn-outline-danger ms-1"
                        onclick="return confirm('¿Seguro que deseas eliminar esta tarea?')">🗑 Eliminar</a>
@@ -122,19 +112,13 @@
 
                 <!-- Documentación -->
                 <td>
-                  <!-- Ver archivo si existe -->
                   <div th:if="${task.attachmentPath != null}">
-                    <a th:href="@{${task.attachmentPath}}"
-                       target="_blank"
-                       class="btn btn-link btn-sm p-0 align-baseline">
+                    <a th:href="@{${task.attachmentPath}}" target="_blank" class="btn btn-link btn-sm p-0 align-baseline">
                       📎 Ver archivo
                     </a>
                   </div>
-                  <div th:if="${task.attachmentPath == null}" class="text-muted">
-                    –
-                  </div>
+                  <div th:if="${task.attachmentPath == null}" class="text-muted">–</div>
 
-                  <!-- Subir/actualizar archivo (solo admin) -->
                   <form th:if="${isAdmin}"
                         th:action="@{'/tasks/' + ${task.id} + '/upload'}"
                         method="post"
@@ -142,22 +126,21 @@
                         class="mt-2">
                     <div class="input-group input-group-sm">
                       <input type="file" name="file" class="form-control"
-                             accept=".pdf,.doc,.docx,.jpg,.png,.txt" required>
+                             accept=".pdf,.doc,.docx,.jpg,.png,.txt" required />
                       <button class="btn btn-outline-secondary" type="submit">⬆️ Subir</button>
                     </div>
                   </form>
                 </td>
               </tr>
-
             </tbody>
           </table>
         </div>
       </div>
     </div>
 
-  </div>
+  </main>
 
   <!-- Bootstrap JS -->
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <!--script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script-->
 </body>
 </html>

@@ -4,6 +4,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import es.merida.tfg.gestion_proyectos.model.User;
 import es.merida.tfg.gestion_proyectos.repository.UserRepository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
 
@@ -30,4 +31,46 @@ public class UserService {
     public Optional<User> findByUsername(String username) {
         return userRepository.findByUsername(username);
     }
+
+    public Optional<User> findByEmail(String email) {   // 👈 añadido
+        return userRepository.findByEmail(email);
+    }
+
+    public String encodePassword(String plain) {
+        return passwordEncoder.encode(plain);
+    }
+
+    @Transactional
+    public User updateProfile(String currentUsername, String newUsername, String email) {
+        User me = userRepository.findByUsername(currentUsername)
+                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
+
+        // Validaciones de unicidad
+        if (!newUsername.equalsIgnoreCase(me.getUsername())
+                && userRepository.findByUsername(newUsername).isPresent()) {
+            throw new IllegalArgumentException("El nombre de usuario ya está en uso.");
+        }
+        if (!email.equalsIgnoreCase(me.getEmail())
+                && userRepository.findByEmail(email).isPresent()) {
+            throw new IllegalArgumentException("Ese email ya está registrado.");
+        }
+
+        me.setUsername(newUsername);
+        me.setEmail(email);
+        return userRepository.save(me);
+    }
+
+    @Transactional
+    public boolean changePassword(String username, String currentRaw, String newRaw) {
+        User me = userRepository.findByUsername(username).orElse(null);
+        if (me == null) return false;
+        if (!passwordEncoder.matches(currentRaw, me.getPassword())) return false;
+
+        me.setPassword(passwordEncoder.encode(newRaw));
+        userRepository.save(me);
+        return true;
+    }
+
+    // 
+
 }

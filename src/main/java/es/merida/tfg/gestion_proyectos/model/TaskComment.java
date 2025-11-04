@@ -6,7 +6,8 @@ import java.time.LocalDateTime;
 
 @Data
 @Entity
-public class Comment {
+@Table(name = "task_comments")
+public class TaskComment {
 
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -17,11 +18,11 @@ public class Comment {
     @Column(nullable=false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
-    @ManyToOne(optional=false)
+    @ManyToOne(optional=false, fetch = FetchType.LAZY)
     @JoinColumn(name = "task_id")
     private Task task;
 
-    @ManyToOne(optional=false)
+    @ManyToOne(optional=false, fetch = FetchType.LAZY)
     @JoinColumn(name = "author_id")
     private User author;
 }

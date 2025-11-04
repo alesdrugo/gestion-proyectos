@@ -35,21 +35,24 @@ public class AccountController {
                                 @RequestParam String email,
                                 HttpSession session,
                                 Model model) {
+
         String current = (String) session.getAttribute("username");
         if (current == null) return "redirect:/login";
 
         try {
+            // Usa el método que espera el nombre actual, no el ID
             User updated = userService.updateProfile(current, username, email);
-            // si cambió el username, refrescamos la sesión
+
+            // Refrescar la sesión si el nombre cambió
             session.setAttribute("username", updated.getUsername());
             model.addAttribute("me", updated);
             model.addAttribute("successProfile", "Perfil actualizado correctamente.");
         } catch (IllegalArgumentException ex) {
-            // coincide con las validaciones de unicidad que lanza tu UserService
             User me = userService.findByUsername(current).orElse(null);
             model.addAttribute("me", me);
             model.addAttribute("errorProfile", ex.getMessage());
         }
+
         return "account";
     }
 
@@ -60,6 +63,7 @@ public class AccountController {
                                  @RequestParam String confirmPassword,
                                  HttpSession session,
                                  Model model) {
+
         String username = (String) session.getAttribute("username");
         if (username == null) return "redirect:/login";
 
@@ -77,6 +81,7 @@ public class AccountController {
             return "account";
         }
 
+        // Aquí también usamos username
         boolean ok = userService.changePassword(username, currentPassword, newPassword);
         if (!ok) {
             model.addAttribute("me", me);

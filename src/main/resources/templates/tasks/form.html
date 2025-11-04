@@ -1,12 +1,9 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
-  <meta charset="UTF-8">
-  <title th:text="${task.id} != null ? 'Editar tarea' : 'Nueva tarea'"></title>
-
-  <!-- Bootstrap 5 -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-
+  <meta charset="UTF-8" />
+  <title th:text="${task.id} != null ? 'Editar tarea' : 'Nueva tarea'">Tarea</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
   <script>
     function validarFecha() {
       const fecha = document.getElementById("dueDate").value;
@@ -19,41 +16,31 @@
     }
   </script>
 </head>
-
 <body class="bg-light">
-  <div class="container mt-5">
 
-    <!-- Cabecera -->
+  
+  <div th:replace="~{fragments/navbar :: navbar}"></div>
+
+  <main class="container my-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
-      <h2 class="text-primary"
+      <h2 class="text-primary mb-0"
           th:text="${task.id} != null ?
-                   '✏️ Editar tarea · ' + ${project.name} :
-                   '➕ Nueva tarea · ' + ${project.name}">
-      </h2>
-      <div>
-        <span class="me-3">
-          👤 <strong th:text="${username}">usuario</strong>
-          (<span th:text="${isAdmin} ? 'Administrador' : 'Usuario'"></span>)
-        </span>
-        <a href="/logout" class="btn btn-outline-danger btn-sm">Cerrar sesión</a>
-      </div>
+                   '✏️ Editar tarea de: ' + ${project.name} :
+                   '➕ Añadir tarea al proyecto: ' + ${project.name}"></h2>
     </div>
 
-    <!-- Formulario -->
     <div class="card shadow-sm">
       <div class="card-body">
         <form th:action="${task.id} != null ? @{'/tasks/update/' + ${task.id}} : @{'/tasks/add/' + ${project.id}}"
-              th:object="${task}"
-              method="post"
-              enctype="multipart/form-data"
+              th:object="${task}" method="post" enctype="multipart/form-data"
               onsubmit="return validarFecha()">
 
-          <input type="hidden" th:field="*{project.id}"/>
+          <input type="hidden" th:field="*{project.id}" />
 
           <!-- Título -->
           <div class="mb-3">
             <label for="title" class="form-label">Título</label>
-            <input type="text" id="title" th:field="*{title}" class="form-control" required>
+            <input id="title" type="text" th:field="*{title}" class="form-control" required />
           </div>
 
           <!-- Descripción -->
@@ -65,49 +52,48 @@
           <!-- Fecha límite -->
           <div class="mb-3">
             <label for="dueDate" class="form-label">Fecha límite</label>
-            <input type="date" id="dueDate" th:field="*{dueDate}" class="form-control">
+            <input id="dueDate" type="date" th:field="*{dueDate}" class="form-control" />
           </div>
 
           <!-- Estado -->
           <div class="form-check mb-3">
-            <input type="checkbox" id="completed" th:field="*{completed}" class="form-check-input">
-            <label for="completed" class="form-check-label">Marcar como completada</label>
+            <input id="completed" type="checkbox" th:field="*{completed}" class="form-check-input" />
+            <label for="completed" class="form-check-label">Completada</label>
           </div>
 
-          <!-- Asignación de usuario (solo admin) -->
-          <div class="mb-3" th:if="${isAdmin}">
+          <!-- Asignar usuario (solo admin) -->
+          <div th:if="${isAdmin}" class="mb-3">
             <label for="assignedUser" class="form-label">Asignar a usuario</label>
-            <select id="assignedUser" name="assignedUser.id" th:field="*{assignedUser.id}" class="form-select" required>
-              <option th:each="u : ${users}" th:value="${u.id}" th:text="${u.username}">user</option>
+            <select id="assignedUser" name="assignedUser.id" th:field="*{assignedUser.id}" class="form-select">
+              <option th:each="u : ${users}" th:value="${u.id}" th:text="${u.username}"></option>
             </select>
           </div>
 
-          <!-- Adjuntar documento -->
+          <!-- Subir archivo -->
           <div class="mb-3">
             <label for="file" class="form-label">Adjuntar documento</label>
-            <input type="file" id="file" name="file" class="form-control"
-                   accept=".pdf,.doc,.docx,.jpg,.png,.txt">
-            <!-- Archivo actual -->
-            <div class="form-text" th:if="${task.attachmentPath != null}">
-              Actual: 
-              <a th:href="@{${task.attachmentPath}}" target="_blank"
-                 th:text="${#strings.substringAfter(task.attachmentPath, '/')}">archivo</a>
-            </div>
+            <input id="file" type="file" name="file" class="form-control"
+                   accept=".pdf,.doc,.docx,.jpg,.png,.txt" />
+          </div>
+
+          <!-- Archivo actual -->
+          <div th:if="${task.attachmentPath != null}" class="mb-3">
+            <strong>Archivo actual:</strong>
+            <a th:href="@{${task.attachmentPath}}" target="_blank"
+               th:text="${#strings.substringAfter(task.attachmentPath, '/')}"></a>
           </div>
 
           <!-- Botones -->
-          <div class="d-flex justify-content-between">
+          <div class="d-flex justify-content-between mt-4">
             <a th:href="@{'/tasks/' + ${project.id}}" class="btn btn-secondary">← Volver</a>
-            <button type="submit" class="btn btn-primary"
-                    th:text="${task.id} != null ? '💾 Guardar cambios' : '✅ Guardar tarea'">Guardar</button>
+            <button type="submit" class="btn btn-primary" th:text="${task.id} != null ? '💾 Guardar cambios' : '✅ Guardar tarea'">Guardar
+            </button>
           </div>
-
         </form>
       </div>
     </div>
-  </div>
+  </main>
 
-  <!-- Bootstrap JS -->
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <!--script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script-->
 </body>
 </html>

@@ -7,15 +7,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body class="bg-light">
-  <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm">
-    <div class="container-fluid">
-      <a class="navbar-brand" href="/dashboard">Gestión de Proyectos</a>
-      <div class="d-flex align-items-center">
-        <a href="/projects" class="btn btn-outline-light btn-sm me-2">Proyectos</a>
-        <a href="/logout" class="btn btn-outline-light btn-sm">Cerrar sesión</a>
-      </div>
-    </div>
-  </nav>
+  <div th:replace="~{fragments/navbar :: navbar}"></div>
 
   <div class="container my-4">
     <h3 class="mb-4">📊 Resumen</h3>
@@ -62,7 +54,40 @@
       </div>
     </div>
   </div>
+  <div class="card mt-4 border-0 shadow-sm">
+  <div class="card-body">
+    <h5 class="card-title">📅 Mis próximas tareas</h5>
 
+    <table class="table table-sm align-middle">
+      <thead>
+        <tr>
+          <th>Proyecto</th>
+          <th>Título</th>
+          <th>Fecha límite</th>
+          <th>Estado</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr th:each="t : ${upcomingTasks}">
+          <td th:text="${t.project.name}"></td>
+          <td th:text="${t.title}"></td>
+          <td th:text="${#temporals.format(t.dueDate, 'dd/MM/yyyy')}"></td>
+          <td>
+            <span th:if="${t.completed}" class="badge bg-success">✅ Hecha</span>
+            <span th:unless="${t.completed}" class="badge bg-warning text-dark">⏳ Pendiente</span>
+          </td>
+        </tr>
+        <tr th:if="${#lists.isEmpty(upcomingTasks)}">
+          <td colspan="4" class="text-center text-muted">No tienes tareas próximas.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="text-end">
+      <a href="/projects" class="btn btn-sm btn-outline-primary">Ver todos los proyectos →</a>
+    </div>
+  </div>
+</div>
   <script th:inline="javascript">
     const labels = /*[[${chartLabels}]]*/ ["Pendientes","Completadas","Vencidas"];
     const data = /*[[${chartData}]]*/ [0,0,0];

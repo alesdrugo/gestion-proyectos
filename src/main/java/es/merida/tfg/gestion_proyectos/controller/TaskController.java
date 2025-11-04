@@ -13,10 +13,13 @@ import org.springframework.web.multipart.MultipartFile;
 
 import es.merida.tfg.gestion_proyectos.model.Project;
 import es.merida.tfg.gestion_proyectos.model.Task;
+import es.merida.tfg.gestion_proyectos.model.TaskComment;
 import es.merida.tfg.gestion_proyectos.model.User;
 import es.merida.tfg.gestion_proyectos.repository.ProjectRepository;
+import es.merida.tfg.gestion_proyectos.repository.TaskCommentRepository;
 import es.merida.tfg.gestion_proyectos.repository.TaskRepository;
 import es.merida.tfg.gestion_proyectos.repository.UserRepository;
+import es.merida.tfg.gestion_proyectos.service.EmailService;
 import jakarta.servlet.http.HttpSession;
 
 @Controller
@@ -26,46 +29,101 @@ public class TaskController {
     @Autowired private TaskRepository taskRepository;
     @Autowired private ProjectRepository projectRepository;
     @Autowired private UserRepository userRepository;
+    @Autowired private TaskCommentRepository taskCommentRepository;
+    @Autowired private EmailService emailService;
 
     // ============================
     // 🔹 LISTADO DE TAREAS
     // ============================
     @GetMapping("/{projectId}")
-public String listTasks(@PathVariable Long projectId,
-                        @RequestParam(required = false) String status,
-                        @RequestParam(required = false) Long assigneeId,
-                        Model model, HttpSession session) {
-    if (session == null || session.getAttribute("username") == null)
-        return "redirect:/login";
+    public String listTasks(@PathVariable Long projectId,
+                            @RequestParam(required = false) String status,
+                            @RequestParam(required = false) Long assigneeId,
+                            Model model, HttpSession session) {
+        if (session == null || session.getAttribute("username") == null)
+            return "redirect:/login";
 
-    var project = projectRepository.findById(projectId)
-            .orElseThrow(() -> new IllegalArgumentException("Proyecto no encontrado: " + projectId));
+        var project = projectRepository.findById(projectId)
+                .orElseThrow(() -> new IllegalArgumentException("Proyecto no encontrado: " + projectId));
 
-    List<Task> tasks;
-    var maybeUser = (assigneeId != null) ? userRepository.findById(assigneeId) : java.util.Optional.empty();
+        List<Task> tasks;
+        var maybeUser = (assigneeId != null) ? userRepository.findById(assigneeId) : java.util.Optional.empty();
 
-    if (status != null && status.equalsIgnoreCase("completada") && maybeUser.isPresent()) {
-        tasks = taskRepository.findByProjectAndCompletedAndAssignedUser(project, true, (User)maybeUser.get());
-    } else if (status != null && status.equalsIgnoreCase("completada")) {
-        tasks = taskRepository.findByProjectAndCompleted(project, true);
-    } else if (status != null && status.equalsIgnoreCase("pendiente") && maybeUser.isPresent()) {
-        tasks = taskRepository.findByProjectAndCompletedAndAssignedUser(project, false, (User)maybeUser.get());
-    } else if (maybeUser.isPresent()) {
-        tasks = taskRepository.findByProjectAndAssignedUser(project, (User)maybeUser.get());
-    } else {
-        tasks = taskRepository.findByProject(project);
+        if ("completada".equalsIgnoreCase(status) && maybeUser.isPresent()) {
+            tasks = taskRepository.findByProjectAndCompletedAndAssignedUser(project, true, (User)maybeUser.get());
+        } else if ("completada".equalsIgnoreCase(status)) {
+            tasks = taskRepository.findByProjectAndCompleted(project, true);
+        } else if ("pendiente".equalsIgnoreCase(status) && maybeUser.isPresent()) {
+            tasks = taskRepository.findByProjectAndCompletedAndAssignedUser(project, false, (User)maybeUser.get());
+        } else if (maybeUser.isPresent()) {
+            tasks = taskRepository.findByProjectAndAssignedUser(project, (User)maybeUser.get());
+        } else {
+            tasks = taskRepository.findByProject(project);
+        }
+
+        model.addAttribute("project", project);
+        model.addAttribute("tasks", tasks);
+        model.addAttribute("users", userRepository.findAll());
+        model.addAttribute("username", session.getAttribute("username"));
+        model.addAttribute("isAdmin", session.getAttribute("isAdmin"));
+        model.addAttribute("filterStatus", status);
+        model.addAttribute("filterAssigneeId", assigneeId);
+
+        return "tasks/list";
     }
 
-    model.addAttribute("project", project);
-    model.addAttribute("tasks", tasks);
-    model.addAttribute("users", userRepository.findAll());
-    model.addAttribute("username", session.getAttribute("username"));
-    model.addAttribute("isAdmin", session.getAttribute("isAdmin"));
-    model.addAttribute("filterStatus", status);
-    model.addAttribute("filterAssigneeId", assigneeId);
+    // ============================
+    // 🔹 DETALLE DE TAREA + COMENTARIOS
+    // ============================
+    @GetMapping("/view/{taskId}")
+    public String viewTask(@PathVariable Long taskId, Model model, HttpSession session) {
+        if (session == null || session.getAttribute("username") == null)
+            return "redirect:/login";
 
-    return "tasks/list";
-}
+        Task task = taskRepository.findById(taskId)
+                .orElseThrow(() -> new IllegalArgumentException("Tarea no encontrada: " + taskId));
+
+        var comments = taskCommentRepository.findByTaskOrderByCreatedAtDesc(task);
+
+        model.addAttribute("task", task);
+        model.addAttribute("comments", comments);
+        model.addAttribute("newComment", new TaskComment());
+        model.addAttribute("username", session.getAttribute("username"));
+        model.addAttribute("isAdmin", session.getAttribute("isAdmin"));
+
+        return "tasks/view";
+    }
+
+    // ============================
+    // 🔹 AÑADIR COMENTARIO
+    // ============================
+    @PostMapping("/{taskId}/comment")
+    public String addComment(@PathVariable Long taskId,
+                             @ModelAttribute("newComment") TaskComment newComment,
+                             HttpSession session) {
+        if (session == null || session.getAttribute("username") == null)
+            return "redirect:/login";
+
+        String username = (String) session.getAttribute("username");
+        User author = userRepository.findByUsername(username).orElse(null);
+        if (author == null) return "redirect:/login";
+
+        Task task = taskRepository.findById(taskId)
+                .orElseThrow(() -> new IllegalArgumentException("Tarea no encontrada: " + taskId));
+
+        if (newComment.getText() == null || newComment.getText().trim().isEmpty())
+            return "redirect:/tasks/view/" + taskId;
+
+        newComment.setTask(task);
+        newComment.setAuthor(author);
+        taskCommentRepository.save(newComment);
+
+        // (Si luego añades notificación por comentario, aquí es buen sitio para llamarla)
+        // emailService.sendTaskComment(...);  <-- NO existe en tu EmailService actual
+
+        return "redirect:/tasks/view/" + taskId;
+    }
+
     // ============================
     // 🔹 FORMULARIO NUEVA TAREA
     // ============================
@@ -112,19 +170,25 @@ public String listTasks(@PathVariable Long projectId,
         task.setTaskNumber(nextNumber);
         task.setProject(project);
 
+        // Resolver usuario asignado (si viene id)
+        User assignee = null;
         if (task.getAssignedUser() != null && task.getAssignedUser().getId() != null) {
-            User user = userRepository.findById(task.getAssignedUser().getId()).orElse(null);
-            task.setAssignedUser(user);
+            assignee = userRepository.findById(task.getAssignedUser().getId()).orElse(null);
+            task.setAssignedUser(assignee);
         }
 
-        // 📎 Guardar fichero si viene
         if (file != null && !file.isEmpty()) {
             String url = saveFileAndGetPublicUrl(file);
             task.setAttachmentPath(url);
-            System.out.println("📎 Archivo subido para nueva tarea: " + url);
         }
 
-        taskRepository.save(task);
+        taskRepository.save(task); // Necesitamos el id para el enlace del mail
+
+        // Enviar email si hay asignado
+        if (assignee != null) {
+            emailService.sendTaskAssigned(assignee, task);
+        }
+
         return "redirect:/tasks/" + projectId;
     }
 
@@ -147,7 +211,6 @@ public String listTasks(@PathVariable Long projectId,
             String url = saveFileAndGetPublicUrl(file);
             task.setAttachmentPath(url);
             taskRepository.save(task);
-            System.out.println("📎 Archivo subido para tarea " + taskId + ": " + url);
         }
 
         return "redirect:/tasks/" + task.getProject().getId();
@@ -167,7 +230,6 @@ public String listTasks(@PathVariable Long projectId,
         boolean isOwner = task.getAssignedUser() != null &&
                           task.getAssignedUser().getUsername().equals(currentUser);
 
-        // 🔒 Solo admin o usuario asignado puede cambiar estado
         if (!isAdmin && !isOwner)
             return "redirect:/tasks/" + task.getProject().getId();
 
@@ -216,23 +278,42 @@ public String listTasks(@PathVariable Long projectId,
         Task existingTask = taskRepository.findById(taskId)
                 .orElseThrow(() -> new IllegalArgumentException("Tarea no encontrada: " + taskId));
 
+        // Guardamos el asignado previo para detectar cambios
+        Long previousAssigneeId = existingTask.getAssignedUser() != null
+                ? existingTask.getAssignedUser().getId()
+                : null;
+
         existingTask.setTitle(updatedTask.getTitle());
         existingTask.setDescription(updatedTask.getDescription());
-        existingTask.setDueDate(updatedTask.getDueDate());
+        
+        if (updatedTask.getDueDate() != null) {
+            existingTask.setDueDate(updatedTask.getDueDate());
+        }
+        
         existingTask.setCompleted(updatedTask.isCompleted());
 
+        User newAssignee = null;
         if (updatedTask.getAssignedUser() != null && updatedTask.getAssignedUser().getId() != null) {
-            User user = userRepository.findById(updatedTask.getAssignedUser().getId()).orElse(null);
-            existingTask.setAssignedUser(user);
+            newAssignee = userRepository.findById(updatedTask.getAssignedUser().getId()).orElse(null);
         }
+        existingTask.setAssignedUser(newAssignee);
 
         if (file != null && !file.isEmpty()) {
             String url = saveFileAndGetPublicUrl(file);
             existingTask.setAttachmentPath(url);
-            System.out.println("📎 Archivo reemplazado para tarea " + taskId + ": " + url);
         }
 
         taskRepository.save(existingTask);
+
+        // Si cambia el asignado, o si antes no había y ahora sí -> enviar mail
+        Long newAssigneeId = newAssignee != null ? newAssignee.getId() : null;
+        boolean assigneeChanged = (previousAssigneeId == null && newAssigneeId != null)
+                || (previousAssigneeId != null && !previousAssigneeId.equals(newAssigneeId));
+
+        if (assigneeChanged && newAssignee != null) {
+            emailService.sendTaskAssigned(newAssignee, existingTask);
+        }
+
         return "redirect:/tasks/" + existingTask.getProject().getId();
     }
 

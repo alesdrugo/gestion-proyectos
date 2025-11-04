@@ -20,5 +20,7 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
     int findMaxTaskNumberByProject(Project project);
     long countByCompleted(boolean completed);
     long countByCompletedFalseAndDueDateBefore(java.time.LocalDate date);
+
+    List<Task> findTop5ByAssignedUser_UsernameAndCompletedFalseOrderByDueDateAsc(String username);
     
 }

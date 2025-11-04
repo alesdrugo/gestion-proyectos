@@ -1,0 +1,58 @@
+<!-- templates/fragments/navbar.html -->
+<div th:fragment="navbar">
+  <!-- Navbar unificada -->
+  <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm">
+    <div class="container-fluid">
+      <a class="navbar-brand" href="/dashboard">Gestión de Proyectos</a>
+
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent"
+              aria-controls="navbarContent" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+
+      <div class="collapse navbar-collapse" id="navbarContent">
+        <ul class="navbar-nav me-auto">
+          <!-- Menú principal -->
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" id="menuProyectos" role="button" data-bs-toggle="dropdown"
+               aria-expanded="false">
+              📂 Gestión
+            </a>
+            <ul class="dropdown-menu" aria-labelledby="menuProyectos">
+              <li><a class="dropdown-item" href="/dashboard">📊 Dashboard</a></li>
+              <li><a class="dropdown-item" href="/projects">📁 Proyectos</a></li>
+              <li th:if="${isAdmin}">
+                <a class="dropdown-item" href="/users">👥 Gestión de usuarios</a>
+              </li>
+            </ul>
+          </li>
+        </ul>
+
+        <ul class="navbar-nav ms-auto align-items-center">
+          <li class="nav-item me-3">
+            <span class="text-white">
+              👤 <strong th:text="${username}">usuario</strong>
+              (<span th:text="${isAdmin} ? 'Administrador' : 'Usuario'"></span>)
+            </span>
+          </li>
+
+          <!-- Menú cuenta -->
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" id="menuCuenta" role="button" data-bs-toggle="dropdown"
+               aria-expanded="false">
+              ⚙️ Cuenta
+            </a>
+            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="menuCuenta">
+              <li><a class="dropdown-item" href="/account">👤 Mi perfil</a></li>
+              <li><hr class="dropdown-divider"></li>
+              <li><a class="dropdown-item text-danger" href="/logout">🚪 Cerrar sesión</a></li>
+            </ul>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Si ya cargas Bootstrap JS en cada página, puedes quitar esta línea -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</div>

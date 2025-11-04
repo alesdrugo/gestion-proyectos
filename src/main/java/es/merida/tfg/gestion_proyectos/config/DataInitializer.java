@@ -34,7 +34,7 @@ public class DataInitializer {
                 admin.setPassword(passwordEncoder.encode("admin")); // Contraseña por defecto
                 admin.setEnabled(true);
                 admin.setRoles(Set.of(adminRole));
-                
+                admin.setEmail("ale.castillo.gonzalez@gmail.com");
                 userRepository.save(admin);
                 System.out.println("✅ Usuario ADMIN creado (user: admin / pass: admin)");
             } else {
@@ -50,13 +50,14 @@ public class DataInitializer {
 
             // Crear usuario admin si no existe
             if (userRepository.findByUsername("user").isEmpty()) {
-                User admin = new User();
-                admin.setUsername("user");
-                admin.setPassword(passwordEncoder.encode("user")); // Contraseña por defecto
-                admin.setEnabled(true);
-                admin.setRoles(Set.of(userRole));
+                User user = new User();
+                user.setUsername("user");
+                user.setPassword(passwordEncoder.encode("user")); // Contraseña por defecto
+                user.setEnabled(true);
+                user.setRoles(Set.of(userRole));
+                user.setEmail("taqer_@hotmail.com");
 
-                userRepository.save(admin);
+                userRepository.save(user);
                 System.out.println("✅ Usuario USER creado (user: user / pass: user)");
             } else {
                 System.out.println("ℹ️ Usuario USER ya existe, no se ha modificado.");

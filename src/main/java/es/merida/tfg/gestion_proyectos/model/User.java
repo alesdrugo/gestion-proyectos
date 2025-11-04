@@ -23,6 +23,11 @@ public class User {
     @Column(nullable = false)
     private boolean enabled = true;
 
+    @Column(unique = true, nullable = false)
+    private String email;
+
+
+
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
         name = "user_roles",

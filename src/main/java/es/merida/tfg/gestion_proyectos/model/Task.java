@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import lombok.Data;
 import java.time.LocalDate;
 
+import org.springframework.format.annotation.DateTimeFormat;
+
 @Data
 @Entity
 @Table(name = "tasks")
@@ -25,6 +27,7 @@ public class Task {
     @Column(nullable = false)
     private boolean completed = false;
 
+    @DateTimeFormat(pattern = "yyyy-MM-dd")
     private LocalDate dueDate;
 
     // ✅ Relación N tareas → 1 proyecto
@@ -42,5 +45,5 @@ public class Task {
 
     @OneToMany(mappedBy = "task", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("createdAt DESC")
-    private java.util.List<Comment> comments;
+    private java.util.List<TaskComment> comments;
 }

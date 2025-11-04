@@ -1,46 +1,17 @@
-# --------- STAGE 1: BUILD ---------
-FROM eclipse-temurin:21-jdk AS build
-WORKDIR /workspace
+# Imagen base con Java 21
+FROM eclipse-temurin:21-jdk
 
-# Copiamos solo lo necesario para cachear dependencias
-COPY .mvn .mvn
-COPY mvnw .
-COPY pom.xml .
-RUN chmod +x mvnw && ./mvnw -q -DskipTests dependency:go-offline
-
-# Ahora el código
-COPY src src
-
-# Compila (saldrá el jar en target/)
-RUN ./mvnw clean package -DskipTests
-
-
-# --------- STAGE 2: RUNTIME ---------
-FROM eclipse-temurin:21-jre
+# Directorio de trabajo dentro del contenedor
 WORKDIR /app
 
-# Usuario no-root
-RUN useradd -r -s /usr/sbin/nologin appuser
+# Copiar los archivos del proyecto
+COPY . .
 
-# Copiamos el jar construido
-COPY --from=build /workspace/target/*-SNAPSHOT.jar /app/app.jar
+# Construir el proyecto (usar el wrapper de Maven)
+RUN ./mvnw clean package -DskipTests
 
-# Directorios para datos persistentes
-RUN mkdir -p /data /app/uploads && chown -R appuser:appuser /data /app/uploads
-
-# Variables de entorno útiles
-ENV TZ=Europe/Madrid \
-    SPRING_PROFILES_ACTIVE=prod \
-    JAVA_OPTS="-XX:MaxRAMPercentage=75 -XX:+UseG1GC"
-
-# IMPORTANTE: Render expone la variable PORT
-# Forzamos server.port a $PORT y configuramos H2 a /data
-ENV SPRING_DATASOURCE_URL="jdbc:h2:file:/data/gestionproyectos-db;DB_CLOSE_ON_EXIT=FALSE;AUTO_RECONNECT=TRUE" \
-    SPRING_DATASOURCE_DRIVER_CLASS_NAME="org.h2.Driver"
-
+# Exponer el puerto 8080
 EXPOSE 8080
 
-USER appuser
-
-# Usamos ENTRYPOINT para respetar $PORT en Render
-ENTRYPOINT sh -c 'java $JAVA_OPTS -Dserver.port=${PORT:-8080} -jar /app/app.jar'
+# Comando para arrancar la app
+CMD ["java", "-jar", "target/gestion-proyectos-0.0.1-SNAPSHOT.jar"]
