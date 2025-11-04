@@ -8,84 +8,79 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
 @Controller
-public class AccountController {
+public class AuthController {
 
     private final UserService userService;
 
-    public AccountController(UserService userService) {
+    public AuthController(UserService userService) {
         this.userService = userService;
     }
 
-    // ========= Página "Mi perfil"
-    @GetMapping("/account")
-    public String account(Model model, HttpSession session) {
-        String username = (String) session.getAttribute("username");
-        if (username == null) return "redirect:/login";
-
-        User me = userService.findByUsername(username).orElse(null);
-        if (me == null) return "redirect:/login";
-
-        model.addAttribute("me", me);
-        return "account";
+    // === Página de login ===
+    @GetMapping("/login")
+    public String loginForm() {
+        return "login";
     }
 
-    // ========= Guardar cambios de perfil (username, email)
-    @PostMapping("/account")
-    public String updateProfile(@RequestParam String username,
-                                @RequestParam String email,
-                                HttpSession session,
-                                Model model) {
-        String current = (String) session.getAttribute("username");
-        if (current == null) return "redirect:/login";
+    // === Procesa el login ===
+    @PostMapping("/login")
+    public String loginSubmit(
+            @RequestParam String username,
+            @RequestParam String password,
+            HttpSession session,
+            Model model
+    ) {
+        System.out.println("🧠 Intentando login para usuario: " + username);
 
-        try {
-            User updated = userService.updateProfile(current, username, email);
-            // si cambió el username, refrescamos la sesión
-            session.setAttribute("username", updated.getUsername());
-            model.addAttribute("me", updated);
-            model.addAttribute("successProfile", "Perfil actualizado correctamente.");
-        } catch (IllegalArgumentException ex) {
-            // coincide con las validaciones de unicidad que lanza tu UserService
-            User me = userService.findByUsername(current).orElse(null);
-            model.addAttribute("me", me);
-            model.addAttribute("errorProfile", ex.getMessage());
+        if (userService.authenticate(username, password)) {
+            session.setAttribute("username", username);
+            model.addAttribute("username", username);
+
+            boolean isAdmin = userService.findByUsername(username)
+                    .map(u -> u.hasRole("ROLE_ADMIN"))
+                    .orElse(false);
+            System.out.println("Es admin?:"+isAdmin);
+            session.setAttribute("isAdmin", isAdmin);
+            System.out.println("✅ Login correcto. Rol admin: " + isAdmin);
+
+            return "redirect:/dashboard";
+        } else {
+            model.addAttribute("error", "Usuario o contraseña incorrectos");
+            return "login";
         }
-        return "account";
     }
 
-    // ========= Cambiar contraseña
-    @PostMapping("/account/password")
-    public String changePassword(@RequestParam String currentPassword,
-                                 @RequestParam String newPassword,
-                                 @RequestParam String confirmPassword,
-                                 HttpSession session,
-                                 Model model) {
-        String username = (String) session.getAttribute("username");
-        if (username == null) return "redirect:/login";
+    // === Página de registro ===
+    @GetMapping("/register")
+    public String registerForm(Model model) {
+        model.addAttribute("user", new User());
+        return "register";
+    }
 
-        User me = userService.findByUsername(username).orElse(null);
-        if (me == null) return "redirect:/login";
-
-        if (newPassword == null || newPassword.length() < 6) {
-            model.addAttribute("me", me);
-            model.addAttribute("errorPassword", "La nueva contraseña debe tener al menos 6 caracteres.");
-            return "account";
+    // === Procesa el registro ===
+    @PostMapping("/register")
+    public String registerSubmit(@ModelAttribute User user, Model model) {
+        // Comprobaciones opcionales
+        if (userService.findByUsername(user.getUsername()).isPresent()) {
+            model.addAttribute("error", "El nombre de usuario ya existe.");
+            model.addAttribute("user", user);
+            return "register";
         }
-        if (!newPassword.equals(confirmPassword)) {
-            model.addAttribute("me", me);
-            model.addAttribute("errorPassword", "Las nuevas contraseñas no coinciden.");
-            return "account";
+        if (userService.findByEmail(user.getEmail()).isPresent()) {
+            model.addAttribute("error", "Ya existe un usuario con ese email.");
+            model.addAttribute("user", user);
+            return "register";
         }
 
-        boolean ok = userService.changePassword(username, currentPassword, newPassword);
-        if (!ok) {
-            model.addAttribute("me", me);
-            model.addAttribute("errorPassword", "La contraseña actual no es correcta.");
-            return "account";
-        }
+        userService.register(user); // asegúrate de que guarda email y hashea password
+        model.addAttribute("success", "Usuario registrado correctamente. Inicia sesión.");
+        return "login";
+    }
 
-        model.addAttribute("me", me);
-        model.addAttribute("successPassword", "Contraseña actualizada correctamente.");
-        return "account";
+    // === Logout ===
+    @GetMapping("/logout")
+    public String logout(HttpSession session) {
+        session.invalidate();
+        return "redirect:/login";
     }
 }
