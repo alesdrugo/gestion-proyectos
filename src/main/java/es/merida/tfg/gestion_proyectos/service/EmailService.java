@@ -28,7 +28,7 @@ public class EmailService {
     public EmailService(JavaMailSender mailSender) {
         this.mailSender = mailSender;
     }
-
+    
     /** Enviar email al asignar una tarea a un usuario (UTF-8 correcto) */
     public void sendTaskAssigned(User user, Task task) {
         if (user == null || user.getEmail() == null || user.getEmail().isBlank()) return;

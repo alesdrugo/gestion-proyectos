@@ -32,22 +32,27 @@ public class AuthController {
     ) {
         System.out.println("🧠 Intentando login para usuario: " + username);
 
-        if (userService.authenticate(username, password)) {
-            session.setAttribute("username", username);
-            model.addAttribute("username", username);
+        // 1) Bloquear si la cuenta está deshabilitada
+        if (!userService.isEnabled(username)) {
+            model.addAttribute("error", "Tu cuenta está deshabilitada. Contacta con el administrador.");
+            return "login";
+        }
 
-            boolean isAdmin = userService.findByUsername(username)
-                    .map(u -> u.hasRole("ROLE_ADMIN"))
-                    .orElse(false);
-            System.out.println("Es admin?:"+isAdmin);
-            session.setAttribute("isAdmin", isAdmin);
-            System.out.println("✅ Login correcto. Rol admin: " + isAdmin);
-
-            return "redirect:/dashboard";
-        } else {
+        // 2) Validar credenciales
+        if (!userService.authenticate(username, password)) {
             model.addAttribute("error", "Usuario o contraseña incorrectos");
             return "login";
         }
+
+        // 3) Login OK -> set sesión
+        session.setAttribute("username", username);
+        boolean isAdmin = userService.findByUsername(username)
+                .map(u -> u.hasRole("ROLE_ADMIN"))
+                .orElse(false);
+        session.setAttribute("isAdmin", isAdmin);
+
+        System.out.println("✅ Login correcto. Rol admin: " + isAdmin);
+        return "redirect:/dashboard";
     }
 
     // === Página de registro ===

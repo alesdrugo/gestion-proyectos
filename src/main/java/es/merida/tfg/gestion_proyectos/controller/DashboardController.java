@@ -23,10 +23,10 @@ public class DashboardController {
 
    @GetMapping({"/", "/dashboard"})
     public String home(Model model, HttpSession session) {
-        String username = session.getAttribute("username").toString();
+        
     if (session == null || session.getAttribute("username") == null)
         return "redirect:/login";
-
+    String username = session.getAttribute("username").toString();
     long totalProjects = projectRepository.count();
     long totalTasks = taskRepository.count();
     long completedTasks = taskRepository.countByCompleted(true);

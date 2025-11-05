@@ -37,6 +37,11 @@ public class User {
     private Set<Role> roles = new HashSet<>();
 
     public boolean hasRole(String roleName) {
-    return roles.stream().anyMatch(r -> r.getName().equalsIgnoreCase(roleName));
-}
+       return roles.stream().anyMatch(r -> r.getName().equalsIgnoreCase(roleName));
+    }
+
+    public boolean isEnabled (){return enabled;}
+    public void setEnabled(boolean enabled){
+        this.enabled=enabled;
+    }
 }

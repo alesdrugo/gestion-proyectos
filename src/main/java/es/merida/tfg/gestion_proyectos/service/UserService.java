@@ -5,7 +5,7 @@ import org.springframework.stereotype.Service;
 import es.merida.tfg.gestion_proyectos.model.User;
 import es.merida.tfg.gestion_proyectos.repository.UserRepository;
 import org.springframework.transaction.annotation.Transactional;
-
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -19,9 +19,21 @@ public class UserService {
 
     public boolean authenticate(String username, String rawPassword) {
         return userRepository.findByUsername(username)
+                .filter(User::isEnabled)
                 .map(user -> passwordEncoder.matches(rawPassword, user.getPassword()))
                 .orElse(false);
     }
+
+    public boolean isEnabled(String username) {
+        return userRepository.findByUsername(username)
+                .map(User::isEnabled)
+                .orElse(false);
+    }
+
+    public List<User> listEnabledUsers() {
+        return userRepository.findByEnabledTrueOrderByUsernameAsc();
+    }
+
 
     public void register(User user) {
         user.setPassword(passwordEncoder.encode(user.getPassword()));
