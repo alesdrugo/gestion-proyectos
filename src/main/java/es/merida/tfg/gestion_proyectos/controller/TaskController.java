@@ -20,6 +20,7 @@ import es.merida.tfg.gestion_proyectos.repository.TaskCommentRepository;
 import es.merida.tfg.gestion_proyectos.repository.TaskRepository;
 import es.merida.tfg.gestion_proyectos.repository.UserRepository;
 import es.merida.tfg.gestion_proyectos.service.EmailService;
+import es.merida.tfg.gestion_proyectos.service.NotificationService;
 import jakarta.servlet.http.HttpSession;
 
 @Controller
@@ -31,6 +32,7 @@ public class TaskController {
     @Autowired private UserRepository userRepository;
     @Autowired private TaskCommentRepository taskCommentRepository;
     @Autowired private EmailService emailService;
+    @Autowired private NotificationService notificationService;
 
     // ============================
     // 🔹 LISTADO DE TAREAS
@@ -50,13 +52,13 @@ public class TaskController {
         var maybeUser = (assigneeId != null) ? userRepository.findById(assigneeId) : java.util.Optional.empty();
 
         if ("completada".equalsIgnoreCase(status) && maybeUser.isPresent()) {
-            tasks = taskRepository.findByProjectAndCompletedAndAssignedUser(project, true, (User)maybeUser.get());
+            tasks = taskRepository.findByProjectAndCompletedAndAssignedUser(project, true, (User) maybeUser.get());
         } else if ("completada".equalsIgnoreCase(status)) {
             tasks = taskRepository.findByProjectAndCompleted(project, true);
         } else if ("pendiente".equalsIgnoreCase(status) && maybeUser.isPresent()) {
-            tasks = taskRepository.findByProjectAndCompletedAndAssignedUser(project, false, (User)maybeUser.get());
+            tasks = taskRepository.findByProjectAndCompletedAndAssignedUser(project, false, (User) maybeUser.get());
         } else if (maybeUser.isPresent()) {
-            tasks = taskRepository.findByProjectAndAssignedUser(project, (User)maybeUser.get());
+            tasks = taskRepository.findByProjectAndAssignedUser(project, (User) maybeUser.get());
         } else {
             tasks = taskRepository.findByProject(project);
         }
@@ -118,11 +120,19 @@ public class TaskController {
         newComment.setAuthor(author);
         taskCommentRepository.save(newComment);
 
-        // (Si luego añades notificación por comentario, aquí es buen sitio para llamarla)
-        // emailService.sendTaskComment(...);  <-- NO existe en tu EmailService actual
+        // Notificar al asignado (si no es el autor del comentario)
+        if (task.getAssignedUser() != null && !task.getAssignedUser().equals(author)) {
+            notificationService.create(
+                task.getAssignedUser(),
+                "💬 Nuevo comentario en tu tarea: " + task.getTitle(),
+                "/tasks/view/" + task.getId()
+            );
+        }
 
         return "redirect:/tasks/view/" + taskId;
     }
+
+
 
     // ============================
     // 🔹 FORMULARIO NUEVA TAREA
@@ -145,9 +155,12 @@ public class TaskController {
         model.addAttribute("task", task);
         model.addAttribute("users", userRepository.findAll());
         model.addAttribute("username", session.getAttribute("username"));
+        // ✅ FALTABA ESTO
+        model.addAttribute("isAdmin", session.getAttribute("isAdmin"));
 
         return "tasks/form";
     }
+
 
     // ============================
     // 🔹 GUARDAR NUEVA TAREA
@@ -182,11 +195,17 @@ public class TaskController {
             task.setAttachmentPath(url);
         }
 
-        taskRepository.save(task); // Necesitamos el id para el enlace del mail
+        // Guardar una vez (necesitamos id para link)
+        taskRepository.save(task);
 
-        // Enviar email si hay asignado
+        // Enviar email y notificar si hay asignado
         if (assignee != null) {
             emailService.sendTaskAssigned(assignee, task);
+            notificationService.create(
+                assignee,
+                "📋 Se te ha asignado la tarea: " + task.getTitle(),
+                "/tasks/view/" + task.getId()
+            );
         }
 
         return "redirect:/tasks/" + projectId;
@@ -239,6 +258,7 @@ public class TaskController {
         return "redirect:/tasks/" + task.getProject().getId();
     }
 
+
     // ============================
     // 🔹 EDITAR TAREA
     // ============================
@@ -257,6 +277,8 @@ public class TaskController {
         model.addAttribute("project", task.getProject());
         model.addAttribute("users", userRepository.findAll());
         model.addAttribute("username", session.getAttribute("username"));
+        // ✅ FALTABA ESTO
+        model.addAttribute("isAdmin", session.getAttribute("isAdmin"));
 
         return "tasks/form";
     }
@@ -285,11 +307,11 @@ public class TaskController {
 
         existingTask.setTitle(updatedTask.getTitle());
         existingTask.setDescription(updatedTask.getDescription());
-        
+
         if (updatedTask.getDueDate() != null) {
             existingTask.setDueDate(updatedTask.getDueDate());
         }
-        
+
         existingTask.setCompleted(updatedTask.isCompleted());
 
         User newAssignee = null;

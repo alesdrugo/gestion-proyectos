@@ -10,6 +10,7 @@ import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 
 import java.nio.charset.StandardCharsets;
+import java.time.format.DateTimeFormatter;
 
 @Service
 public class EmailService {
@@ -71,6 +72,95 @@ public class EmailService {
 
         } catch (Exception e) {
             // loguea si quieres
+            e.printStackTrace();
+        }
+    }
+
+    public void sendDueSoon(User user, Task task) {
+        if (user == null || user.getEmail() == null || user.getEmail().isBlank()) return;
+
+        try {
+            String subject = "⏰ Tarea próxima a vencer: " + safe(task.getTitle());
+            String due = task.getDueDate() != null
+                    ? task.getDueDate().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))
+                    : "sin fecha";
+            String link = baseUrl + "/tasks/view/" + task.getId();
+
+            String body = """
+                    Hola %s,
+
+                    La tarea "%s" está próxima a vencer (fecha límite: %s).
+
+                    Proyecto: %s
+                    Enlace directo: %s
+
+                    Te recomendamos revisarla cuanto antes.
+
+                    — %s
+                    """.formatted(
+                    safe(user.getUsername()),
+                    safe(task.getTitle()),
+                    due,
+                    safe(task.getProject() != null ? task.getProject().getName() : "-"),
+                    link,
+                    fromName
+            );
+
+            MimeMessage mime = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(mime, false, StandardCharsets.UTF_8.name());
+            helper.setTo(user.getEmail());
+            helper.setFrom(new InternetAddress(fromAddress, fromName, StandardCharsets.UTF_8.name()));
+            helper.setSubject(subject);
+            helper.setText(body, false);
+
+            mailSender.send(mime);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    /** ⚠️ Aviso: tarea vencida */
+    public void sendOverdue(User user, Task task) {
+        if (user == null || user.getEmail() == null || user.getEmail().isBlank()) return;
+
+        try {
+            String subject = "⚠️ Tarea vencida: " + safe(task.getTitle());
+            String due = task.getDueDate() != null
+                    ? task.getDueDate().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))
+                    : "sin fecha";
+            String link = baseUrl + "/tasks/view/" + task.getId();
+
+            String body = """
+                    Hola %s,
+
+                    La tarea "%s" está vencida desde el %s.
+
+                    Proyecto: %s
+                    Enlace directo: %s
+
+                    Por favor, revisa o actualiza su estado.
+
+                    — %s
+                    """.formatted(
+                    safe(user.getUsername()),
+                    safe(task.getTitle()),
+                    due,
+                    safe(task.getProject() != null ? task.getProject().getName() : "-"),
+                    link,
+                    fromName
+            );
+
+            MimeMessage mime = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(mime, false, StandardCharsets.UTF_8.name());
+            helper.setTo(user.getEmail());
+            helper.setFrom(new InternetAddress(fromAddress, fromName, StandardCharsets.UTF_8.name()));
+            helper.setSubject(subject);
+            helper.setText(body, false);
+
+            mailSender.send(mime);
+
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }

@@ -22,5 +22,12 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
     long countByCompletedFalseAndDueDateBefore(java.time.LocalDate date);
 
     List<Task> findTop5ByAssignedUser_UsernameAndCompletedFalseOrderByDueDateAsc(String username);
+
+    // Tareas que vencen en un rango (hoy..fecha)
+    List<Task> findByCompletedFalseAndDueDateBetween(LocalDate from, LocalDate to);
+
+    // Tareas vencidas (fecha límite < hoy)
+    List<Task> findByCompletedFalseAndDueDateBefore(LocalDate date);
+
     
 }

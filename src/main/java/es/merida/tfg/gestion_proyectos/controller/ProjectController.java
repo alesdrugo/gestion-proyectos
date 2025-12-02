@@ -21,6 +21,9 @@ public class ProjectController {
     public String listProjects(Model model, HttpSession session) {
         if (session == null || session.getAttribute("username") == null)
             return "redirect:/login";
+        model.addAttribute("session", session);
+        model.addAttribute("username", session.getAttribute("username"));
+        model.addAttribute("isAdmin", session.getAttribute("isAdmin"));
 
         model.addAttribute("projects", projectRepository.findAll());
         return "projects/list";
@@ -32,6 +35,9 @@ public class ProjectController {
             return "redirect:/login";
         if (!Boolean.TRUE.equals(session.getAttribute("isAdmin")))
             return "redirect:/projects";
+        model.addAttribute("session", session);
+        model.addAttribute("username", session.getAttribute("username"));
+        model.addAttribute("isAdmin", session.getAttribute("isAdmin"));    
         model.addAttribute("project", new Project());
         return "projects/form";
     }
@@ -68,6 +74,10 @@ public class ProjectController {
 
         model.addAttribute("project", project);
         model.addAttribute("username", session.getAttribute("username"));
+        model.addAttribute("session", session);        
+        model.addAttribute("isAdmin", session.getAttribute("isAdmin"));
+
+        
         return "projects/form";
     }
 

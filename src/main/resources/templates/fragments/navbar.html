@@ -1,7 +1,10 @@
 <!-- templates/fragments/navbar.html -->
 <div th:fragment="navbar">
-  <!-- Navbar unificada -->
   <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm">
+  <!-- Incluye SIEMPRE el bundle (trae Popper dentro) -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+          defer></script>
+
     <div class="container-fluid">
       <a class="navbar-brand" href="/dashboard">Gestión de Proyectos</a>
 
@@ -11,8 +14,8 @@
       </button>
 
       <div class="collapse navbar-collapse" id="navbarContent">
+        <!-- Menú izquierda -->
         <ul class="navbar-nav me-auto">
-          <!-- Menú principal -->
           <li class="nav-item dropdown">
             <a class="nav-link dropdown-toggle" href="#" id="menuProyectos" role="button" data-bs-toggle="dropdown"
                aria-expanded="false">
@@ -28,11 +31,50 @@
           </li>
         </ul>
 
+        <!-- Menú derecha -->
         <ul class="navbar-nav ms-auto align-items-center">
+
+          <!-- Campanita de notificaciones -->
+          <li class="nav-item dropdown me-3">
+            <a class="nav-link dropdown-toggle position-relative" href="#" id="menuNotificaciones"
+               role="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Notificaciones">
+              🔔
+              <!-- Badge solo si hay no leídas -->
+              <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
+                    th:if="${unreadCount != null and unreadCount > 0}"
+                    th:text="${unreadCount}">0</span>
+            </a>
+
+            <ul class="dropdown-menu dropdown-menu-end p-0" aria-labelledby="menuNotificaciones" style="width:320px; max-height: 60vh; overflow:auto;">
+              <li class="px-3 py-2 border-bottom">
+                <strong>Notificaciones</strong>
+                <a class="float-end small text-decoration-none" href="/notifications/mark-all">Marcar como leídas</a>
+              </li>
+
+              <!-- Lista de notificaciones -->
+              <li th:each="n : ${notifications}">
+                <a class="dropdown-item text-wrap" th:href="${n.link}">
+                  <span th:text="${n.message}">Mensaje</span>
+                </a>
+              </li>
+
+              <!-- Vacío -->
+              <li th:if="${#lists.isEmpty(notifications)}">
+                <span class="dropdown-item text-muted">Sin notificaciones</span>
+              </li>
+
+              <li><hr class="dropdown-divider m-0"></li>
+              <li>
+                <a class="dropdown-item text-center" href="/notifications">Ver todas</a>
+              </li>
+            </ul>
+          </li>
+
+          <!-- Info usuario -->
           <li class="nav-item me-3">
             <span class="text-white">
               👤 <strong th:text="${username}">usuario</strong>
-              (<span th:text="${isAdmin} ? 'Administrador' : 'Usuario'"></span>)
+              (<span th:text="${isAdmin} ? 'Administrador' : 'Usuario'">Rol</span>)
             </span>
           </li>
 
@@ -48,11 +90,9 @@
               <li><a class="dropdown-item text-danger" href="/logout">🚪 Cerrar sesión</a></li>
             </ul>
           </li>
+
         </ul>
       </div>
     </div>
   </nav>
-
-  <!-- Si ya cargas Bootstrap JS en cada página, puedes quitar esta línea -->
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </div>
