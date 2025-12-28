@@ -40,10 +40,9 @@ public class AccountController {
         if (current == null) return "redirect:/login";
 
         try {
-            // Usa el método que espera el nombre actual, no el ID
+            
             User updated = userService.updateProfile(current, username, email);
 
-            // Refrescar la sesión si el nombre cambió
             session.setAttribute("username", updated.getUsername());
             model.addAttribute("me", updated);
             model.addAttribute("successProfile", "Perfil actualizado correctamente.");
@@ -56,7 +55,6 @@ public class AccountController {
         return "account";
     }
 
-    // Cambiar contraseña
     @PostMapping("/account/password")
     public String changePassword(@RequestParam String currentPassword,
                                  @RequestParam String newPassword,
