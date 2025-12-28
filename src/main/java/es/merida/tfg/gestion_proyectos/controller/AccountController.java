@@ -16,20 +16,20 @@ public class AccountController {
         this.userService = userService;
     }
 
-    // ========= Página "Mi perfil"
+    // Mi perfil
     @GetMapping("/account")
     public String account(Model model, HttpSession session) {
         String username = (String) session.getAttribute("username");
         if (username == null) return "redirect:/login";
 
-        User me = userService.findByUsername(username).orElse(null);
-        if (me == null) return "redirect:/login";
+        User myUser = userService.findByUsername(username).orElse(null);
+        if (myUser == null) return "redirect:/login";
 
-        model.addAttribute("me", me);
+        model.addAttribute("me", myUser);
         return "account";
     }
 
-    // ========= Guardar cambios de perfil (username, email)
+    // Guardar cambios de perfil (username, email)
     @PostMapping("/account")
     public String updateProfile(@RequestParam String username,
                                 @RequestParam String email,
@@ -48,15 +48,15 @@ public class AccountController {
             model.addAttribute("me", updated);
             model.addAttribute("successProfile", "Perfil actualizado correctamente.");
         } catch (IllegalArgumentException ex) {
-            User me = userService.findByUsername(current).orElse(null);
-            model.addAttribute("me", me);
+            User myUser = userService.findByUsername(current).orElse(null);
+            model.addAttribute("me", myUser);
             model.addAttribute("errorProfile", ex.getMessage());
         }
 
         return "account";
     }
 
-    // ========= Cambiar contraseña
+    // Cambiar contraseña
     @PostMapping("/account/password")
     public String changePassword(@RequestParam String currentPassword,
                                  @RequestParam String newPassword,
@@ -67,29 +67,29 @@ public class AccountController {
         String username = (String) session.getAttribute("username");
         if (username == null) return "redirect:/login";
 
-        User me = userService.findByUsername(username).orElse(null);
-        if (me == null) return "redirect:/login";
+        User myUser = userService.findByUsername(username).orElse(null);
+        if (myUser == null) return "redirect:/login";
 
         if (newPassword == null || newPassword.length() < 6) {
-            model.addAttribute("me", me);
+            model.addAttribute("me", myUser);
             model.addAttribute("errorPassword", "La nueva contraseña debe tener al menos 6 caracteres.");
             return "account";
         }
         if (!newPassword.equals(confirmPassword)) {
-            model.addAttribute("me", me);
+            model.addAttribute("me", myUser);
             model.addAttribute("errorPassword", "Las nuevas contraseñas no coinciden.");
             return "account";
         }
 
-        // Aquí también usamos username
+
         boolean ok = userService.changePassword(username, currentPassword, newPassword);
         if (!ok) {
-            model.addAttribute("me", me);
+            model.addAttribute("me", myUser);
             model.addAttribute("errorPassword", "La contraseña actual no es correcta.");
             return "account";
         }
 
-        model.addAttribute("me", me);
+        model.addAttribute("me", myUser);
         model.addAttribute("successPassword", "Contraseña actualizada correctamente.");
         return "account";
     }
