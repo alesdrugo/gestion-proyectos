@@ -1,23 +1,13 @@
 package es.merida.tfg.gestion_proyectos.config;
 
-import es.merida.tfg.gestion_proyectos.model.Project;
+import es.merida.tfg.gestion_proyectos.model.*;
 import es.merida.tfg.gestion_proyectos.model.Role;
-import es.merida.tfg.gestion_proyectos.model.Task;
-import es.merida.tfg.gestion_proyectos.model.TaskComment;
-import es.merida.tfg.gestion_proyectos.model.User;
-import es.merida.tfg.gestion_proyectos.repository.ProjectRepository;
-import es.merida.tfg.gestion_proyectos.repository.RoleRepository;
-import es.merida.tfg.gestion_proyectos.repository.TaskCommentRepository;
-import es.merida.tfg.gestion_proyectos.repository.TaskRepository;
-import es.merida.tfg.gestion_proyectos.repository.UserRepository;
+import es.merida.tfg.gestion_proyectos.repository.*;
 import org.springframework.boot.CommandLineRunner;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Profile;
+import org.springframework.context.annotation.*;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
 import java.time.LocalDate;
-import java.util.Optional;
 import java.util.Set;
 
 @Configuration
@@ -27,6 +17,7 @@ public class DataInitializer {
     @Bean
     CommandLineRunner initDatabase(UserRepository userRepository,
                                    RoleRepository roleRepository,
+                                   TeamRepository teamRepository,              // 👈
                                    ProjectRepository projectRepository,
                                    TaskRepository taskRepository,
                                    TaskCommentRepository taskCommentRepository,
@@ -36,28 +27,49 @@ public class DataInitializer {
             Role adminRole = roleRepository.findByName("ROLE_ADMIN")
                     .orElseGet(() -> roleRepository.save(newRole("ROLE_ADMIN")));
 
+            Role managerRole = roleRepository.findByName("ROLE_MANAGER")      // 👈
+                    .orElseGet(() -> roleRepository.save(newRole("ROLE_MANAGER")));
+
             Role userRole = roleRepository.findByName("ROLE_USER")
                     .orElseGet(() -> roleRepository.save(newRole("ROLE_USER")));
 
+            // Admin (sistema): sin team
             User admin = userRepository.findByUsername("admin").orElseGet(() -> {
                 User u = new User();
                 u.setUsername("admin");
                 u.setPassword(passwordEncoder.encode("admin"));
                 u.setEnabled(true);
-                u.setRoles(Set.of(adminRole, userRole));
+                u.getRoles().clear();
+                u.getRoles().add(adminRole);
                 u.setEmail(uniqueEmail(userRepository, "admin@example.com"));
                 return userRepository.save(u);
             });
 
+            // Equipo demo
+            Team demoTeam = teamRepository.findByNameIgnoreCase("Equipo Demo")
+                    .orElseGet(() -> {
+                        Team t = new Team();
+                        t.setName("Equipo Demo");
+                        return teamRepository.save(t);
+                    });
+
+            // Manager demo (o puedes dejarlo como USER; pero para probar CRUD, mejor manager)
             User demo = userRepository.findByUsername("demo").orElseGet(() -> {
                 User u = new User();
                 u.setUsername("demo");
                 u.setPassword(passwordEncoder.encode("demo"));
-                u.setEnabled(true);
-                u.setRoles(Set.of(userRole));
+                u.getRoles().clear();
+                u.getRoles().add(managerRole);        //  demo será manager
                 u.setEmail(uniqueEmail(userRepository, "demo@example.com"));
+                u.setTeam(demoTeam);                       //  asignación al equipo
                 return userRepository.save(u);
             });
+
+            // Asignar manager del equipo (si tu Team tiene manager)
+            if (demoTeam.getManager() == null) {
+                demoTeam.setManager(demo);
+                teamRepository.save(demoTeam);
+            }
 
             if (projectRepository.count() == 0) {
                 Project p1 = new Project();
@@ -66,6 +78,7 @@ public class DataInitializer {
                 p1.setStatus("En curso");
                 p1.setStartDate(LocalDate.now().minusDays(7));
                 p1.setEndDate(LocalDate.now().plusMonths(1));
+                p1.setTeam(demoTeam);                      // 👈 obligatorio
                 p1 = projectRepository.save(p1);
 
                 Project p2 = new Project();
@@ -74,6 +87,7 @@ public class DataInitializer {
                 p2.setStatus("Planificado");
                 p2.setStartDate(LocalDate.now());
                 p2.setEndDate(LocalDate.now().plusMonths(2));
+                p2.setTeam(demoTeam);                      // 👈 obligatorio
                 p2 = projectRepository.save(p2);
 
                 createTask(taskRepository, p1,
@@ -123,11 +137,9 @@ public class DataInitializer {
 
     private String uniqueEmail(UserRepository userRepository, String baseEmail) {
         if (userRepository.findByEmail(baseEmail).isEmpty()) return baseEmail;
-
         String[] parts = baseEmail.split("@", 2);
         String prefix = parts[0];
         String domain = parts[1];
-
         int i = 2;
         String candidate = prefix + i + "@" + domain;
         while (userRepository.findByEmail(candidate).isPresent()) {
@@ -146,7 +158,8 @@ public class DataInitializer {
                             User assignee,
                             String attachmentUrl) {
 
-        int next = taskRepository.findMaxTaskNumberByProject(project) + 1;
+        // 👇 cambiaremos el método de TaskRepository en el siguiente bloque
+        int next = taskRepository.findMaxTaskNumberByProjectId(project.getId()) + 1;
 
         Task t = new Task();
         t.setProject(project);

@@ -26,17 +26,15 @@ public class ReminderJob {
 
     @Scheduled(cron = "0 0 9 * * *")
     public void sendDailyReminders() {
-        if (!remindersEnabled) {
-            return;
-        }
+        if (!remindersEnabled) return;
 
         LocalDate today = LocalDate.now();
         LocalDate tomorrow = today.plusDays(1);
 
-        taskRepository.findByCompletedFalseAndDueDateBetween(tomorrow, tomorrow)
+        taskRepository.findTasksDueBetween(tomorrow, tomorrow)
                 .forEach(task -> notify(task, NotificationType.DUE_SOON));
 
-        taskRepository.findByCompletedFalseAndDueDateBefore(today)
+        taskRepository.findOverdueTasks(today)
                 .forEach(task -> notify(task, NotificationType.OVERDUE));
     }
 

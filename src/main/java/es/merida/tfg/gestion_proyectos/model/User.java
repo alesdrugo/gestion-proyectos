@@ -26,7 +26,9 @@ public class User {
     @Column(unique = true, nullable = false)
     private String email;
 
-
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "team_id")
+    private Team team;
 
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
@@ -44,4 +46,5 @@ public class User {
     public void setEnabled(boolean enabled){
         this.enabled=enabled;
     }
+
 }

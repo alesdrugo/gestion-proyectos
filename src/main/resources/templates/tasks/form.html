@@ -62,7 +62,7 @@
           </div>
 
           <!-- Asignar usuario (solo admin) -->
-          <div th:if="${isAdmin}" class="mb-3">
+          <div th:if="${isManager}" class="mb-3">
             <label for="assignedUser" class="form-label">Asignar a usuario</label>
             <select id="assignedUser" class="form-select" th:field="*{assignedUser.id}">
               <option th:value="${null}">— Sin asignar —</option>

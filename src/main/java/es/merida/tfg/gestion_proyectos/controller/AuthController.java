@@ -26,9 +26,10 @@ public class AuthController {
 
     @PostMapping("/login")
     public String doLogin(@RequestParam String username,
-                          @RequestParam String password,
-                          HttpSession session,
-                          Model model) {
+                        @RequestParam String password,
+                        HttpSession session,
+                        Model model,
+                        jakarta.servlet.http.HttpServletRequest request) {
 
         if (!userService.isEnabled(username)) {
             model.addAttribute("error", "Tu cuenta está deshabilitada. Contacta con el administrador.");
@@ -40,16 +41,40 @@ public class AuthController {
             return "login";
         }
 
-        session.setAttribute("username", username);
+        // Regenerar sesión (lo que te comentó Codex, bien por seguridad)
+        session.invalidate();
+        HttpSession newSession = request.getSession(true);
 
-        boolean isAdmin = userService.findByUsername(username)
-                .map(u -> u.hasRole("ROLE_ADMIN"))
-                .orElse(false);
+        var userOpt = userService.findByUsername(username);
+        if (userOpt.isEmpty()) {
+            model.addAttribute("error", "Usuario no encontrado.");
+            return "login";
+        }
+        var user = userOpt.get();
 
-        session.setAttribute("isAdmin", isAdmin);
+        newSession.setAttribute("username", username);
+
+        // Guardar roles en sesión
+        var roleNames = user.getRoles().stream().map(r -> r.getName()).toList();
+        newSession.setAttribute("roles", roleNames);
+
+        // Guardar teamId (o null)
+        Long teamId = (user.getTeam() != null) ? user.getTeam().getId() : null;
+        newSession.setAttribute("teamId", teamId);
+
+        // Compatibilidad temporal (si quieres seguir usando isAdmin en alguna vista)
+        boolean isAdmin = roleNames.stream().anyMatch(r -> r.equalsIgnoreCase("ROLE_ADMIN"));
+        newSession.setAttribute("isAdmin", isAdmin);
+
+        // Estado PENDING (LIMBO): sin equipo o sin roles
+        boolean isPending = (teamId == null) || roleNames.isEmpty();
+        if (isPending && !isAdmin) {
+            return "redirect:/pending";
+        }
 
         return "redirect:/dashboard";
     }
+
 
     @GetMapping("/register")
     public String registerForm(Model model) {

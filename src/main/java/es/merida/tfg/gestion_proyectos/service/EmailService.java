@@ -1,6 +1,7 @@
 package es.merida.tfg.gestion_proyectos.service;
 
 import es.merida.tfg.gestion_proyectos.model.Task;
+import es.merida.tfg.gestion_proyectos.model.Team;
 import es.merida.tfg.gestion_proyectos.model.User;
 import jakarta.mail.internet.InternetAddress;
 import jakarta.mail.internet.MimeMessage;
@@ -164,6 +165,52 @@ public class EmailService {
             e.printStackTrace();
         }
     }
+    public void sendUserAssignedToTeam(User user, Team team, String roleName) {
+        if (user == null || user.getEmail() == null || user.getEmail().isBlank()) return;
+
+        try {
+            
+            String teamName = (team != null) ? safe(team.getName()) : "PENDING";
+            String roleLabel = "ROLE_MANAGER".equalsIgnoreCase(roleName) ? "Manager" : "Usuario";
+
+            String subject = "Asignación de cuenta: " + teamName + " (" + roleLabel + ")";
+            String link = baseUrl + "/dashboard";
+
+            String body = """
+                    Hola %s,
+
+                    Tu cuenta ha sido actualizada por el administrador:
+
+                    • Equipo: %s
+                    • Rol: %s
+
+                    Ya puedes acceder a la aplicación aquí:
+                    %s
+
+                    — %s
+                    """.formatted(
+                    safe(user.getUsername()),
+                    teamName,
+                    roleLabel,
+                    link,
+                    fromName
+            );
+
+            MimeMessage mime = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(mime, false, StandardCharsets.UTF_8.name());
+            helper.setTo(user.getEmail());
+            helper.setFrom(new InternetAddress(fromAddress, fromName, StandardCharsets.UTF_8.name()));
+            helper.setSubject(subject);
+            helper.setText(body, false);
+
+            mailSender.send(mime);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+
 
     private String safe(String s) { return s == null ? "-" : s; }
 }

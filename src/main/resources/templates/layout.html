@@ -39,7 +39,7 @@
       <div class="d-flex align-items-center" th:if="${session != null}">
         <span class="navbar-text text-white me-3">
           👤 <strong th:text="${session.username}">usuario</strong>
-          (<span th:text="${session.isAdmin} ? 'Administrador' : 'Usuario'"></span>)
+          (<span th:text="${session.isManager} ? 'Administrador' : 'Usuario'"></span>)
         </span>
         <a class="btn btn-outline-light btn-sm" href="/logout">Cerrar sesión</a>
       </div>

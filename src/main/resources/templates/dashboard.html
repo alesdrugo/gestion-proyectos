@@ -7,98 +7,181 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body class="bg-light">
-  <div th:replace="~{fragments/navbar :: navbar}"></div>
 
-  <div class="container my-4">
-    <h3 class="mb-4">📊 Resumen</h3>
+<div th:replace="~{fragments/navbar :: navbar}"></div>
 
-    <div class="row g-3">
-      <div class="col-md-3">
-        <div class="card border-0 shadow-sm">
-          <div class="card-body">
-            <div class="text-muted">Proyectos</div>
-            <div class="fs-3 fw-semibold" th:text="${totalProjects}">0</div>
-          </div>
-        </div>
-      </div>
-      <div class="col-md-3">
-        <div class="card border-0 shadow-sm">
-          <div class="card-body">
-            <div class="text-muted">Tareas</div>
-            <div class="fs-3 fw-semibold" th:text="${totalTasks}">0</div>
-          </div>
-        </div>
-      </div>
-      <div class="col-md-3">
-        <div class="card border-0 shadow-sm">
-          <div class="card-body">
-            <div class="text-muted">Pendientes</div>
-            <div class="fs-3 fw-semibold text-warning" th:text="${pendingTasks}">0</div>
-          </div>
-        </div>
-      </div>
-      <div class="col-md-3">
-        <div class="card border-0 shadow-sm">
-          <div class="card-body">
-            <div class="text-muted">Vencidas</div>
-            <div class="fs-3 fw-semibold text-danger" th:text="${overdueTasks}">0</div>
-          </div>
+<div class="container my-4">
+
+  <h3 class="mb-4">📊 Resumen</h3>
+
+  <!-- Métricas -->
+  <div class="row g-3">
+    <div class="col-md-3">
+      <div class="card shadow-sm border-0">
+        <div class="card-body">
+          <div class="text-muted">Proyectos</div>
+          <div class="fs-3 fw-semibold" th:text="${totalProjects}">0</div>
         </div>
       </div>
     </div>
-
-    <div class="card mt-4 border-0 shadow-sm">
-      <div class="card-body">
-        <h5 class="card-title">Distribución de tareas</h5>
-        <canvas id="tasksChart" height="100"></canvas>
+    <div class="col-md-3">
+      <div class="card shadow-sm border-0">
+        <div class="card-body">
+          <div class="text-muted">Tareas</div>
+          <div class="fs-3 fw-semibold" th:text="${totalTasks}">0</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card shadow-sm border-0">
+        <div class="card-body">
+          <div class="text-muted">Pendientes</div>
+          <div class="fs-3 fw-semibold text-warning" th:text="${pendingTasks}">0</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card shadow-sm border-0">
+        <div class="card-body">
+          <div class="text-muted">Vencidas</div>
+          <div class="fs-3 fw-semibold text-danger" th:text="${overdueTasks}">0</div>
+        </div>
       </div>
     </div>
   </div>
-  <div class="card mt-4 border-0 shadow-sm">
-  <div class="card-body">
-    <h5 class="card-title">📅 Mis próximas tareas</h5>
 
-    <table class="table table-sm align-middle">
-      <thead>
+  <!-- Gráfica -->
+  <div class="card mt-4 shadow-sm border-0">
+    <div class="card-body">
+      <h5 class="card-title">Distribución de tareas</h5>
+      <canvas id="tasksChart" height="100"></canvas>
+    </div>
+  </div>
+
+  <!-- Calendario -->
+  <div class="card mt-4 shadow-sm border-0">
+    <div class="card-body">
+
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <h5 class="mb-0">🗓 Calendario de vencimientos</h5>
+        <div class="d-flex gap-2">
+          <a class="btn btn-sm btn-outline-secondary"
+             th:href="@{/dashboard(month=${calPrevMonth})}">←</a>
+          <span class="fw-semibold"
+                th:text="${calMonthLabel} + ' ' + ${calYear}">Mes</span>
+          <a class="btn btn-sm btn-outline-secondary"
+             th:href="@{/dashboard(month=${calNextMonth})}">→</a>
+        </div>
+      </div>
+
+      <div class="table-responsive">
+        <table class="table table-bordered align-middle mb-0">
+          <thead class="table-light text-center">
+          <tr>
+            <th>Lun</th><th>Mar</th><th>Mié</th><th>Jue</th>
+            <th>Vie</th><th>Sáb</th><th>Dom</th>
+          </tr>
+          </thead>
+          <tbody>
+          <tr th:each="week : ${calWeeks}">
+            <!--td th:each="day : ${week}"
+                th:classappend="${day.monthValue != calMonth} ? 'bg-light text-muted' : ''"
+                style="min-width:140px; vertical-align: top;"-->
+            <td th:each="day : ${week}"
+                th:classappend="
+                  ${day.monthValue != calMonth} ? 'bg-light text-muted' : ''
+                  + (${day.equals(T(java.time.LocalDate).now())} ? ' border border-2 border-primary' : '')
+                "
+                style="min-width:140px; vertical-align: top;">
+              <div class="d-flex justify-content-between mb-1">
+                <span class="fw-semibold" th:text="${day.dayOfMonth}">1</span>
+
+                <span class="badge bg-primary"
+                      th:if="${calTasksByDate[#temporals.format(day,'yyyy-MM-dd')] != null}"
+                      th:text="${#lists.size(calTasksByDate[#temporals.format(day,'yyyy-MM-dd')])}">
+                </span>
+              </div>
+
+              <div th:if="${calTasksByDate[#temporals.format(day,'yyyy-MM-dd')] != null}">
+                <div th:each="t : ${calTasksByDate[#temporals.format(day,'yyyy-MM-dd')]}" class="mb-1">
+                  <a th:href="@{'/tasks/view/' + ${t.id}}"
+                     class="text-decoration-none small d-block">
+                    <span th:if="${t.completed}" class="badge bg-success me-1">✅</span>
+                    <span th:unless="${t.completed}" class="badge bg-warning text-dark me-1">⏳</span>
+                    <span th:text="${t.title}">Tarea</span>
+                  </a>
+                </div>
+              </div>
+
+            </td>
+          </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="small text-muted mt-2">
+        Mostrando vencimientos del
+        <span th:text="${#temporals.format(calStart,'dd/MM/yyyy')}"></span>
+        al
+        <span th:text="${#temporals.format(calEnd,'dd/MM/yyyy')}"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Próximas tareas -->
+  <div class="card mt-4 shadow-sm border-0">
+    <div class="card-body">
+      <h5 class="card-title">📅 Mis próximas tareas</h5>
+
+      <table class="table table-sm align-middle">
+        <thead>
         <tr>
           <th>Proyecto</th>
           <th>Título</th>
           <th>Fecha límite</th>
           <th>Estado</th>
         </tr>
-      </thead>
-      <tbody>
+        </thead>
+        <tbody>
         <tr th:each="t : ${upcomingTasks}">
           <td th:text="${t.project.name}"></td>
           <td th:text="${t.title}"></td>
-          <td th:text="${#temporals.format(t.dueDate, 'dd/MM/yyyy')}"></td>
+          <td th:text="${#temporals.format(t.dueDate,'dd/MM/yyyy')}"></td>
           <td>
             <span th:if="${t.completed}" class="badge bg-success">✅ Hecha</span>
             <span th:unless="${t.completed}" class="badge bg-warning text-dark">⏳ Pendiente</span>
           </td>
         </tr>
         <tr th:if="${#lists.isEmpty(upcomingTasks)}">
-          <td colspan="4" class="text-center text-muted">No tienes tareas próximas.</td>
+          <td colspan="4" class="text-center text-muted">
+            No tienes tareas próximas.
+          </td>
         </tr>
-      </tbody>
-    </table>
+        </tbody>
+      </table>
 
-    <div class="text-end">
-      <a href="/projects" class="btn btn-sm btn-outline-primary">Ver todos los proyectos →</a>
+      <div class="text-end">
+        <a href="/projects" class="btn btn-sm btn-outline-primary">
+          Ver todos los proyectos →
+        </a>
+      </div>
     </div>
   </div>
-</div>
-  <script th:inline="javascript">
-    const labels = /*[[${chartLabels}]]*/ ["Pendientes","Completadas","Vencidas"];
-    const data = /*[[${chartData}]]*/ [0,0,0];
 
-    new Chart(document.getElementById('tasksChart'), {
-      type: 'doughnut',
-      data: {
-        labels: labels,
-        datasets: [{ data: data }]
-      }
-    });
-  </script>
+</div>
+
+<script th:inline="javascript">
+  const labels = /*[[${chartLabels}]]*/ [];
+  const data = /*[[${chartData}]]*/ [];
+
+  new Chart(document.getElementById('tasksChart'), {
+    type: 'doughnut',
+    data: {
+      labels: labels,
+      datasets: [{ data: data }]
+    }
+  });
+</script>
+
 </body>
 </html>

@@ -14,21 +14,14 @@ import jakarta.servlet.http.HttpSession;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.util.StringUtils;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.ModelAttribute;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.time.LocalDate;
 import java.util.List;
-import java.util.Optional;
 
 @Controller
 @RequestMapping("/tasks")
@@ -55,6 +48,9 @@ public class TaskController {
         this.notificationService = notificationService;
     }
 
+    // =========================
+    // LIST
+    // =========================
     @GetMapping("/{projectId}")
     public String listTasks(@PathVariable Long projectId,
                             @RequestParam(required = false) String status,
@@ -62,35 +58,74 @@ public class TaskController {
                             Model model,
                             HttpSession session) {
 
-        String username = requireLogin(session);
+        String username = Authz.username(session);
         if (username == null) return "redirect:/login";
 
-        Project project = projectRepository.findById(projectId)
+        // Admin no opera tareas
+        if (Authz.hasRole(session, "ROLE_ADMIN")) return "redirect:/admin/users";
+
+        Long teamId = Authz.teamId(session);
+        if (teamId == null) return "redirect:/pending";
+
+        boolean isManager = Authz.hasRole(session, "ROLE_MANAGER");
+
+        Project project = projectRepository.findByIdAndTeamId(projectId, teamId)
                 .orElseThrow(() -> new IllegalArgumentException("Proyecto no encontrado"));
 
-        List<Task> tasks = resolveTasks(project, status, assigneeId);
+        // Cargamos el usuario actual (para filtrar si es ROLE_USER)
+        User currentUser = userRepository.findByUsername(username).orElse(null);
+        if (currentUser == null) return "redirect:/login";
+
+        // Users del equipo solo para el selector del manager
+        List<User> teamUsers = isManager ? userRepository.findByTeamId(teamId) : List.of();
+
+        User assigneeFilter = null;
+        if (isManager && assigneeId != null) {
+            assigneeFilter = userRepository.findByIdAndTeamId(assigneeId, teamId).orElse(null);
+        }
+
+        List<Task> tasks = resolveTasks(project, status, isManager, currentUser, assigneeFilter);
 
         model.addAttribute("project", project);
         model.addAttribute("tasks", tasks);
-        model.addAttribute("users", userRepository.findAll());
+        model.addAttribute("users", teamUsers);
 
         model.addAttribute("username", username);
-        model.addAttribute("isAdmin", session.getAttribute("isAdmin"));
+        model.addAttribute("isManager", isManager);
 
+        // filtros (solo manager usa assigneeId)
         model.addAttribute("filterStatus", status);
-        model.addAttribute("filterAssigneeId", assigneeId);
+        model.addAttribute("filterAssigneeId", isManager ? assigneeId : null);
 
         return "tasks/list";
     }
 
+    // =========================
+    // VIEW
+    // =========================
     @GetMapping("/view/{taskId}")
     public String viewTask(@PathVariable Long taskId, Model model, HttpSession session) {
 
-        String username = requireLogin(session);
+        String username = Authz.username(session);
         if (username == null) return "redirect:/login";
 
-        Task task = taskRepository.findById(taskId)
+        if (Authz.hasRole(session, "ROLE_ADMIN")) return "redirect:/admin/users";
+
+        Long teamId = Authz.teamId(session);
+        if (teamId == null) return "redirect:/pending";
+
+        boolean isManager = Authz.hasRole(session, "ROLE_MANAGER");
+
+        Task task = taskRepository.findByIdAndProjectTeamId(taskId, teamId)
                 .orElseThrow(() -> new IllegalArgumentException("Tarea no encontrada"));
+
+        boolean isOwner = task.getAssignedUser() != null
+                && task.getAssignedUser().getUsername().equals(username);
+
+        // USER solo puede ver su tarea
+        if (!isManager && !isOwner) {
+            return "redirect:/tasks/" + task.getProject().getId();
+        }
 
         var comments = taskCommentRepository.findByTaskOrderByCreatedAtDesc(task);
 
@@ -99,24 +134,42 @@ public class TaskController {
         model.addAttribute("newComment", new TaskComment());
 
         model.addAttribute("username", username);
-        model.addAttribute("isAdmin", session.getAttribute("isAdmin"));
+        model.addAttribute("isManager", isManager);
 
         return "tasks/view";
     }
 
+    // =========================
+    // COMMENT
+    // =========================
     @PostMapping("/{taskId}/comment")
     public String addComment(@PathVariable Long taskId,
                              @ModelAttribute("newComment") TaskComment newComment,
                              HttpSession session) {
 
-        String username = requireLogin(session);
+        String username = Authz.username(session);
         if (username == null) return "redirect:/login";
+
+        if (Authz.hasRole(session, "ROLE_ADMIN")) return "redirect:/admin/users";
+
+        Long teamId = Authz.teamId(session);
+        if (teamId == null) return "redirect:/pending";
+
+        boolean isManager = Authz.hasRole(session, "ROLE_MANAGER");
 
         User author = userRepository.findByUsername(username).orElse(null);
         if (author == null) return "redirect:/login";
 
-        Task task = taskRepository.findById(taskId)
+        Task task = taskRepository.findByIdAndProjectTeamId(taskId, teamId)
                 .orElseThrow(() -> new IllegalArgumentException("Tarea no encontrada"));
+
+        boolean isOwner = task.getAssignedUser() != null
+                && task.getAssignedUser().getUsername().equals(username);
+
+        // USER solo comenta en su tarea
+        if (!isManager && !isOwner) {
+            return "redirect:/tasks/" + task.getProject().getId();
+        }
 
         if (newComment.getText() == null || newComment.getText().trim().isEmpty()) {
             return "redirect:/tasks/view/" + taskId;
@@ -137,14 +190,20 @@ public class TaskController {
         return "redirect:/tasks/view/" + taskId;
     }
 
+    // =========================
+    // MANAGER CRUD
+    // =========================
     @GetMapping("/add/{projectId}")
     public String showAddForm(@PathVariable Long projectId, Model model, HttpSession session) {
 
-        String username = requireLogin(session);
+        String username = Authz.username(session);
         if (username == null) return "redirect:/login";
-        if (!isAdmin(session)) return "redirect:/projects";
+        if (!Authz.hasRole(session, "ROLE_MANAGER")) return "redirect:/projects";
 
-        Project project = projectRepository.findById(projectId)
+        Long teamId = Authz.teamId(session);
+        if (teamId == null) return "redirect:/pending";
+
+        Project project = projectRepository.findByIdAndTeamId(projectId, teamId)
                 .orElseThrow(() -> new IllegalArgumentException("Proyecto no encontrado"));
 
         Task task = new Task();
@@ -152,10 +211,9 @@ public class TaskController {
 
         model.addAttribute("project", project);
         model.addAttribute("task", task);
-        model.addAttribute("users", userRepository.findAll());
-
+        model.addAttribute("users", userRepository.findByTeamId(teamId));
         model.addAttribute("username", username);
-        model.addAttribute("isAdmin", session.getAttribute("isAdmin"));
+        model.addAttribute("isManager", true);
 
         return "tasks/form";
     }
@@ -166,17 +224,22 @@ public class TaskController {
                           @RequestParam(value = "file", required = false) MultipartFile file,
                           HttpSession session) throws IOException {
 
-        String username = requireLogin(session);
+        String username = Authz.username(session);
         if (username == null) return "redirect:/login";
-        if (!isAdmin(session)) return "redirect:/projects";
+        if (!Authz.hasRole(session, "ROLE_MANAGER")) return "redirect:/projects";
 
-        Project project = projectRepository.findById(projectId).orElseThrow();
-        int nextNumber = taskRepository.findMaxTaskNumberByProject(project) + 1;
+        Long teamId = Authz.teamId(session);
+        if (teamId == null) return "redirect:/pending";
+
+        Project project = projectRepository.findByIdAndTeamId(projectId, teamId)
+                .orElseThrow(() -> new IllegalArgumentException("Proyecto no encontrado"));
+
+        int nextNumber = taskRepository.findMaxTaskNumberByProjectId(projectId) + 1;
 
         task.setTaskNumber(nextNumber);
         task.setProject(project);
 
-        User assignee = resolveAssignee(task);
+        User assignee = resolveAssigneeFromTeam(task, teamId);
         task.setAssignedUser(assignee);
 
         if (file != null && !file.isEmpty()) {
@@ -184,14 +247,14 @@ public class TaskController {
             task.setAttachmentPath(url);
         }
 
-        taskRepository.save(task);
+        Task saved = taskRepository.save(task);
 
         if (assignee != null) {
-            emailService.sendTaskAssigned(assignee, task);
+            emailService.sendTaskAssigned(assignee, saved);
             notificationService.create(
                     assignee,
-                    "Se te ha asignado la tarea: " + task.getTitle(),
-                    "/tasks/view/" + task.getId()
+                    "Se te ha asignado la tarea: " + saved.getTitle(),
+                    "/tasks/view/" + saved.getId()
             );
         }
 
@@ -203,11 +266,15 @@ public class TaskController {
                                    @RequestParam("file") MultipartFile file,
                                    HttpSession session) throws IOException {
 
-        String username = requireLogin(session);
+        String username = Authz.username(session);
         if (username == null) return "redirect:/login";
-        if (!isAdmin(session)) return "redirect:/projects";
+        if (!Authz.hasRole(session, "ROLE_MANAGER")) return "redirect:/projects";
 
-        Task task = taskRepository.findById(taskId).orElseThrow();
+        Long teamId = Authz.teamId(session);
+        if (teamId == null) return "redirect:/pending";
+
+        Task task = taskRepository.findByIdAndProjectTeamId(taskId, teamId)
+                .orElseThrow(() -> new IllegalArgumentException("Tarea no encontrada"));
 
         if (file != null && !file.isEmpty()) {
             String url = saveFileAndGetPublicUrl(file);
@@ -221,16 +288,22 @@ public class TaskController {
     @GetMapping("/toggle/{taskId}")
     public String toggleTask(@PathVariable Long taskId, HttpSession session) {
 
-        String username = requireLogin(session);
+        String username = Authz.username(session);
         if (username == null) return "redirect:/login";
 
-        Task task = taskRepository.findById(taskId).orElseThrow();
+        if (Authz.hasRole(session, "ROLE_ADMIN")) return "redirect:/admin/users";
 
-        boolean admin = isAdmin(session);
-        boolean owner = task.getAssignedUser() != null
+        Long teamId = Authz.teamId(session);
+        if (teamId == null) return "redirect:/pending";
+
+        Task task = taskRepository.findByIdAndProjectTeamId(taskId, teamId)
+                .orElseThrow(() -> new IllegalArgumentException("Tarea no encontrada"));
+
+        boolean isManager = Authz.hasRole(session, "ROLE_MANAGER");
+        boolean isOwner = task.getAssignedUser() != null
                 && task.getAssignedUser().getUsername().equals(username);
 
-        if (!admin && !owner) {
+        if (!isManager && !isOwner) {
             return "redirect:/tasks/" + task.getProject().getId();
         }
 
@@ -243,19 +316,21 @@ public class TaskController {
     @GetMapping("/edit/{taskId}")
     public String showEditForm(@PathVariable Long taskId, Model model, HttpSession session) {
 
-        String username = requireLogin(session);
+        String username = Authz.username(session);
         if (username == null) return "redirect:/login";
-        if (!isAdmin(session)) return "redirect:/projects";
+        if (!Authz.hasRole(session, "ROLE_MANAGER")) return "redirect:/projects";
 
-        Task task = taskRepository.findById(taskId)
+        Long teamId = Authz.teamId(session);
+        if (teamId == null) return "redirect:/pending";
+
+        Task task = taskRepository.findByIdAndProjectTeamId(taskId, teamId)
                 .orElseThrow(() -> new IllegalArgumentException("Tarea no encontrada"));
 
         model.addAttribute("task", task);
         model.addAttribute("project", task.getProject());
-        model.addAttribute("users", userRepository.findAll());
-
+        model.addAttribute("users", userRepository.findByTeamId(teamId));
         model.addAttribute("username", username);
-        model.addAttribute("isAdmin", session.getAttribute("isAdmin"));
+        model.addAttribute("isManager", true);
 
         return "tasks/form";
     }
@@ -266,11 +341,14 @@ public class TaskController {
                              @RequestParam(value = "file", required = false) MultipartFile file,
                              HttpSession session) throws IOException {
 
-        String username = requireLogin(session);
+        String username = Authz.username(session);
         if (username == null) return "redirect:/login";
-        if (!isAdmin(session)) return "redirect:/projects";
+        if (!Authz.hasRole(session, "ROLE_MANAGER")) return "redirect:/projects";
 
-        Task existingTask = taskRepository.findById(taskId)
+        Long teamId = Authz.teamId(session);
+        if (teamId == null) return "redirect:/pending";
+
+        Task existingTask = taskRepository.findByIdAndProjectTeamId(taskId, teamId)
                 .orElseThrow(() -> new IllegalArgumentException("Tarea no encontrada"));
 
         Long previousAssigneeId = existingTask.getAssignedUser() != null
@@ -280,14 +358,11 @@ public class TaskController {
         existingTask.setTitle(updatedTask.getTitle());
         existingTask.setDescription(updatedTask.getDescription());
         existingTask.setCompleted(updatedTask.isCompleted());
-
-        if (updatedTask.getDueDate() != null) {
-            existingTask.setDueDate(updatedTask.getDueDate());
-        }
+        existingTask.setDueDate(updatedTask.getDueDate());
 
         User newAssignee = null;
         if (updatedTask.getAssignedUser() != null && updatedTask.getAssignedUser().getId() != null) {
-            newAssignee = userRepository.findById(updatedTask.getAssignedUser().getId()).orElse(null);
+            newAssignee = userRepository.findByIdAndTeamId(updatedTask.getAssignedUser().getId(), teamId).orElse(null);
         }
         existingTask.setAssignedUser(newAssignee);
 
@@ -312,50 +387,57 @@ public class TaskController {
     @GetMapping("/delete/{taskId}")
     public String deleteTask(@PathVariable Long taskId, HttpSession session) {
 
-        String username = requireLogin(session);
+        String username = Authz.username(session);
         if (username == null) return "redirect:/login";
-        if (!isAdmin(session)) return "redirect:/projects";
+        if (!Authz.hasRole(session, "ROLE_MANAGER")) return "redirect:/projects";
 
-        Task task = taskRepository.findById(taskId).orElseThrow();
+        Long teamId = Authz.teamId(session);
+        if (teamId == null) return "redirect:/pending";
+
+        Task task = taskRepository.findByIdAndProjectTeamId(taskId, teamId)
+                .orElseThrow(() -> new IllegalArgumentException("Tarea no encontrada"));
+
         Long projectId = task.getProject().getId();
         taskRepository.delete(task);
 
         return "redirect:/tasks/" + projectId;
     }
 
-    // ---- helpers ----
+    // =========================
+    // HELPERS
+    // =========================
+    private List<Task> resolveTasks(Project project, String status, boolean isManager, User currentUser, User assigneeFilter) {
 
-    private String requireLogin(HttpSession session) {
-        return (String) session.getAttribute("username");
-    }
+        // USER: siempre sus tareas, ignorando filtro de asignado
+        if (!isManager) {
+            if ("completada".equalsIgnoreCase(status)) {
+                return taskRepository.findByProjectAndCompletedAndAssignedUser(project, true, currentUser);
+            }
+            if ("pendiente".equalsIgnoreCase(status)) {
+                return taskRepository.findByProjectAndCompletedAndAssignedUser(project, false, currentUser);
+            }
+            return taskRepository.findByProjectAndAssignedUser(project, currentUser);
+        }
 
-    private boolean isAdmin(HttpSession session) {
-        return Boolean.TRUE.equals(session.getAttribute("isAdmin"));
-    }
-
-    private List<Task> resolveTasks(Project project, String status, Long assigneeId) {
-        Optional<User> maybeUser = (assigneeId != null) ? userRepository.findById(assigneeId) : Optional.empty();
-
-        if ("completada".equalsIgnoreCase(status) && maybeUser.isPresent()) {
-            return taskRepository.findByProjectAndCompletedAndAssignedUser(project, true, maybeUser.get());
+        // MANAGER: filtros completos
+        if ("completada".equalsIgnoreCase(status) && assigneeFilter != null) {
+            return taskRepository.findByProjectAndCompletedAndAssignedUser(project, true, assigneeFilter);
         }
         if ("completada".equalsIgnoreCase(status)) {
             return taskRepository.findByProjectAndCompleted(project, true);
         }
-        if ("pendiente".equalsIgnoreCase(status) && maybeUser.isPresent()) {
-            return taskRepository.findByProjectAndCompletedAndAssignedUser(project, false, maybeUser.get());
+        if ("pendiente".equalsIgnoreCase(status) && assigneeFilter != null) {
+            return taskRepository.findByProjectAndCompletedAndAssignedUser(project, false, assigneeFilter);
         }
-        if (maybeUser.isPresent()) {
-            return taskRepository.findByProjectAndAssignedUser(project, maybeUser.get());
+        if (assigneeFilter != null) {
+            return taskRepository.findByProjectAndAssignedUser(project, assigneeFilter);
         }
         return taskRepository.findByProject(project);
     }
 
-    private User resolveAssignee(Task task) {
-        if (task.getAssignedUser() == null || task.getAssignedUser().getId() == null) {
-            return null;
-        }
-        return userRepository.findById(task.getAssignedUser().getId()).orElse(null);
+    private User resolveAssigneeFromTeam(Task task, Long teamId) {
+        if (task.getAssignedUser() == null || task.getAssignedUser().getId() == null) return null;
+        return userRepository.findByIdAndTeamId(task.getAssignedUser().getId(), teamId).orElse(null);
     }
 
     private String saveFileAndGetPublicUrl(MultipartFile file) throws IOException {
