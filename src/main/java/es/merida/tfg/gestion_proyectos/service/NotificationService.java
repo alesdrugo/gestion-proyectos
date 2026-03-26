@@ -56,8 +56,20 @@ public class NotificationService {
         List<Notification> unread = repo.findByUserAndReadIsFalse(user);
         if (unread.isEmpty()) return;
         unread.forEach(n -> n.setRead(true));
-        // saveAll no es estrictamente necesario en @Transactional con entidades gestionadas,
-        // pero lo dejamos explícito por claridad:
         repo.saveAll(unread);
+    }
+
+    /** Marcar UNA como leída (si pertenece al usuario). */
+    @Transactional
+    public void markAsRead(User user, Long notificationId) {
+        if (user == null || notificationId == null) return;
+
+        Notification n = repo.findByIdAndUser(notificationId, user)
+                .orElseThrow(() -> new IllegalArgumentException("Notificación no encontrada"));
+
+        if (!n.isRead()) {
+            n.setRead(true);
+            repo.save(n);
+        }
     }
 }

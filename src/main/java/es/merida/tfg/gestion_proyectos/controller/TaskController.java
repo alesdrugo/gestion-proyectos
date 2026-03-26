@@ -48,9 +48,8 @@ public class TaskController {
         this.notificationService = notificationService;
     }
 
-    // =========================
-    // LIST
-    // =========================
+
+    // Lista tareas
     @GetMapping("/{projectId}")
     public String listTasks(@PathVariable Long projectId,
                             @RequestParam(required = false) String status,
@@ -100,9 +99,8 @@ public class TaskController {
         return "tasks/list";
     }
 
-    // =========================
-    // VIEW
-    // =========================
+
+    // Ver tarea
     @GetMapping("/view/{taskId}")
     public String viewTask(@PathVariable Long taskId, Model model, HttpSession session) {
 
@@ -139,9 +137,8 @@ public class TaskController {
         return "tasks/view";
     }
 
-    // =========================
+
     // COMMENT
-    // =========================
     @PostMapping("/{taskId}/comment")
     public String addComment(@PathVariable Long taskId,
                              @ModelAttribute("newComment") TaskComment newComment,
@@ -190,9 +187,8 @@ public class TaskController {
         return "redirect:/tasks/view/" + taskId;
     }
 
-    // =========================
+
     // MANAGER CRUD
-    // =========================
     @GetMapping("/add/{projectId}")
     public String showAddForm(@PathVariable Long projectId, Model model, HttpSession session) {
 
@@ -403,9 +399,9 @@ public class TaskController {
         return "redirect:/tasks/" + projectId;
     }
 
-    // =========================
+
     // HELPERS
-    // =========================
+
     private List<Task> resolveTasks(Project project, String status, boolean isManager, User currentUser, User assigneeFilter) {
 
         // USER: siempre sus tareas, ignorando filtro de asignado

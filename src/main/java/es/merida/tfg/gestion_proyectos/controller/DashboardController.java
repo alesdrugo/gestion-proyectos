@@ -1,3 +1,4 @@
+
 package es.merida.tfg.gestion_proyectos.controller;
 
 import es.merida.tfg.gestion_proyectos.model.Task;
@@ -43,9 +44,9 @@ public class DashboardController {
         Long teamId = Authz.teamId(session);
         if (teamId == null) return "redirect:/pending";
 
-        /* =====================
-           Métricas generales
-           ===================== */
+        
+        // Métricas generales
+        
         long totalProjects = projectRepository.findByTeamId(teamId).size();
         long totalTasks = taskRepository.countByProjectTeamId(teamId);
         long completedTasks = taskRepository.countByProjectTeamIdAndCompleted(teamId, true);
@@ -61,20 +62,19 @@ public class DashboardController {
         model.addAttribute("chartLabels", new String[]{"Pendientes", "Completadas", "Vencidas"});
         model.addAttribute("chartData", new long[]{pendingTasks, completedTasks, overdueTasks});
 
-        /* =====================
-           Próximas tareas (usuario)
-           ===================== */
+        
+        //Próximas tareas (usuario)
+
         List<Task> upcomingTasks =
                 taskRepository.findUpcomingTasksForUser(
                         teamId,
                         username,
                         PageRequest.of(0, 5)
                 );
-
         model.addAttribute("upcomingTasks", upcomingTasks);
 
         /* =====================
-           Calendario
+           Calendario (equipo)
            ===================== */
         LocalDate today = LocalDate.now();
         YearMonth ym = (month != null)
@@ -92,10 +92,10 @@ public class DashboardController {
             calEnd = calEnd.plusDays(1);
         }
 
-        List<Task> monthTasks =
-                taskRepository.findTasksDueBetween(calStart, calEnd);
+        // IMPORTANTE: filtrar por teamId (y NO filtrar completed)
+        List<Task> monthTasks = taskRepository.findTasksForTeamBetweenDates(teamId, calStart, calEnd);
 
-        // Map yyyy-MM-dd -> tareas
+        // Map por String yyyy-MM-dd (compatible con Thymeleaf indexando por String)
         Map<String, List<Task>> tasksByDate = new HashMap<>();
         for (Task t : monthTasks) {
             if (t.getDueDate() == null) continue;

@@ -14,27 +14,19 @@ import java.util.Optional;
 
 public interface TaskRepository extends JpaRepository<Task, Long> {
 
-    // =========================
     // Básicos por proyecto
-    // =========================
     List<Task> findByProject(Project project);
-
     List<Task> findByProjectAndCompleted(Project project, boolean completed);
-
     List<Task> findByProjectAndAssignedUser(Project project, User user);
-
     List<Task> findByProjectAndCompletedAndAssignedUser(Project project, boolean completed, User user);
 
-    // =========================
-    // Seguridad / aislamiento por equipo
-    // =========================
-    Optional<Task> findByIdAndProjectTeamId(Long id, Long teamId);
 
+    // Seguridad / aislamiento por equipo
+    Optional<Task> findByIdAndProjectTeamId(Long id, Long teamId);
     List<Task> findByProjectIdAndProjectTeamId(Long projectId, Long teamId);
 
-    // =========================
+    
     // Numeración de tareas
-    // =========================
     @Query("""
         SELECT COALESCE(MAX(t.taskNumber), 0)
         FROM Task t
@@ -42,18 +34,16 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
     """)
     int findMaxTaskNumberByProjectId(@Param("projectId") Long projectId);
 
-    // =========================
-    // Métricas (dashboard)
-    // =========================
+
+    // Grafica (dashboard)
+
     long countByProjectTeamId(Long teamId);
-
     long countByProjectTeamIdAndCompleted(Long teamId, boolean completed);
-
     long countByProjectTeamIdAndCompletedFalseAndDueDateBefore(Long teamId, LocalDate date);
 
-    // =========================
+
     // Próximas tareas del usuario (dashboard)
-    // =========================
+
     @Query("""
         SELECT t FROM Task t
         WHERE t.project.team.id = :teamId
@@ -88,7 +78,7 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
     List<Task> findOverdueTasks(@Param("date") LocalDate date);
 
     // =========================
-    // Calendario (vencimientos del mes)
+    // Calendario (equipo / usuario)
     // =========================
     @Query("""
         SELECT t FROM Task t
@@ -105,10 +95,10 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
     );
 
     @Query("""
-    SELECT t FROM Task t
-    WHERE t.project.team.id = :teamId
-      AND t.dueDate BETWEEN :start AND :end
-    ORDER BY t.dueDate ASC
+        SELECT t FROM Task t
+        WHERE t.project.team.id = :teamId
+          AND t.dueDate BETWEEN :start AND :end
+        ORDER BY t.dueDate ASC
     """)
     List<Task> findTasksForTeamBetweenDates(
             @Param("teamId") Long teamId,

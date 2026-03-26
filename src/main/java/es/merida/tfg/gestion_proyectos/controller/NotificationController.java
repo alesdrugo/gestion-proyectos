@@ -7,6 +7,7 @@ import jakarta.servlet.http.HttpSession;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 
 @Controller
 public class NotificationController {
@@ -45,6 +46,23 @@ public class NotificationController {
 
         userService.findByUsername(username)
                 .ifPresent(notificationService::markAllAsRead);
+
+        return "redirect:/notifications";
+    }
+
+
+    @GetMapping("/notifications/read/{id}")
+    public String markOneRead(@PathVariable Long id, HttpSession session) {
+        String username = (String) session.getAttribute("username");
+        if (username == null) return "redirect:/login";
+
+        var optUser = userService.findByUsername(username);
+        if (optUser.isEmpty()) return "redirect:/login";
+
+        User user = optUser.get();
+
+        // Aquí idealmente marcas SOLO si la notificación es del usuario
+        notificationService.markAsRead(user, id);
 
         return "redirect:/notifications";
     }

@@ -14,7 +14,9 @@
 
   <h3 class="mb-4">📊 Resumen</h3>
 
-  <!-- Métricas -->
+  <!-- =======================
+       MÉTRICAS
+       ======================= -->
   <div class="row g-3">
     <div class="col-md-3">
       <div class="card shadow-sm border-0">
@@ -24,6 +26,7 @@
         </div>
       </div>
     </div>
+
     <div class="col-md-3">
       <div class="card shadow-sm border-0">
         <div class="card-body">
@@ -32,6 +35,7 @@
         </div>
       </div>
     </div>
+
     <div class="col-md-3">
       <div class="card shadow-sm border-0">
         <div class="card-body">
@@ -40,6 +44,7 @@
         </div>
       </div>
     </div>
+
     <div class="col-md-3">
       <div class="card shadow-sm border-0">
         <div class="card-body">
@@ -50,25 +55,36 @@
     </div>
   </div>
 
-  <!-- Gráfica -->
+  <!-- =======================
+       GRÁFICA
+       ======================= -->
   <div class="card mt-4 shadow-sm border-0">
     <div class="card-body">
       <h5 class="card-title">Distribución de tareas</h5>
-      <canvas id="tasksChart" height="100"></canvas>
+
+      <div style="max-width: 320px; margin:auto;">
+        <canvas id="tasksChart"></canvas>
+      </div>
+
     </div>
   </div>
 
-  <!-- Calendario -->
+  <!-- =======================
+       CALENDARIO
+       ======================= -->
   <div class="card mt-4 shadow-sm border-0">
     <div class="card-body">
 
       <div class="d-flex justify-content-between align-items-center mb-2">
         <h5 class="mb-0">🗓 Calendario de vencimientos</h5>
+
         <div class="d-flex gap-2">
           <a class="btn btn-sm btn-outline-secondary"
              th:href="@{/dashboard(month=${calPrevMonth})}">←</a>
+
           <span class="fw-semibold"
                 th:text="${calMonthLabel} + ' ' + ${calYear}">Mes</span>
+
           <a class="btn btn-sm btn-outline-secondary"
              th:href="@{/dashboard(month=${calNextMonth})}">→</a>
         </div>
@@ -82,34 +98,38 @@
             <th>Vie</th><th>Sáb</th><th>Dom</th>
           </tr>
           </thead>
+
           <tbody>
           <tr th:each="week : ${calWeeks}">
-            <!--td th:each="day : ${week}"
-                th:classappend="${day.monthValue != calMonth} ? 'bg-light text-muted' : ''"
-                style="min-width:140px; vertical-align: top;"-->
+
             <td th:each="day : ${week}"
-                th:classappend="
-                  ${day.monthValue != calMonth} ? 'bg-light text-muted' : ''
-                  + (${day.equals(T(java.time.LocalDate).now())} ? ' border border-2 border-primary' : '')
-                "
-                style="min-width:140px; vertical-align: top;">
+    th:classappend="${(day.monthValue != calMonth ? 'bg-light text-muted ' : '') + (day.equals(T(java.time.LocalDate).now()) ? 'border border-2 border-primary' : '')}"
+    style="min-width:140px; vertical-align: top;">
+
+              <!-- Número de día -->
               <div class="d-flex justify-content-between mb-1">
                 <span class="fw-semibold" th:text="${day.dayOfMonth}">1</span>
 
+                <!-- Badge contador -->
                 <span class="badge bg-primary"
                       th:if="${calTasksByDate[#temporals.format(day,'yyyy-MM-dd')] != null}"
                       th:text="${#lists.size(calTasksByDate[#temporals.format(day,'yyyy-MM-dd')])}">
                 </span>
               </div>
 
+              <!-- Listado tareas -->
               <div th:if="${calTasksByDate[#temporals.format(day,'yyyy-MM-dd')] != null}">
                 <div th:each="t : ${calTasksByDate[#temporals.format(day,'yyyy-MM-dd')]}" class="mb-1">
+
                   <a th:href="@{'/tasks/view/' + ${t.id}}"
                      class="text-decoration-none small d-block">
+
                     <span th:if="${t.completed}" class="badge bg-success me-1">✅</span>
                     <span th:unless="${t.completed}" class="badge bg-warning text-dark me-1">⏳</span>
+
                     <span th:text="${t.title}">Tarea</span>
                   </a>
+
                 </div>
               </div>
 
@@ -128,9 +148,12 @@
     </div>
   </div>
 
-  <!-- Próximas tareas -->
+  <!-- =======================
+       PRÓXIMAS TAREAS
+       ======================= -->
   <div class="card mt-4 shadow-sm border-0">
     <div class="card-body">
+
       <h5 class="card-title">📅 Mis próximas tareas</h5>
 
       <table class="table table-sm align-middle">
@@ -142,6 +165,7 @@
           <th>Estado</th>
         </tr>
         </thead>
+
         <tbody>
         <tr th:each="t : ${upcomingTasks}">
           <td th:text="${t.project.name}"></td>
@@ -152,6 +176,7 @@
             <span th:unless="${t.completed}" class="badge bg-warning text-dark">⏳ Pendiente</span>
           </td>
         </tr>
+
         <tr th:if="${#lists.isEmpty(upcomingTasks)}">
           <td colspan="4" class="text-center text-muted">
             No tienes tareas próximas.
@@ -169,6 +194,11 @@
   </div>
 
 </div>
+
+<!-- =======================
+     CHART
+     ======================= -->
+
 
 <script th:inline="javascript">
   const labels = /*[[${chartLabels}]]*/ [];
