@@ -67,12 +67,12 @@ public class EmailService {
             helper.setTo(user.getEmail());
             helper.setFrom(new InternetAddress(fromAddress, fromName, StandardCharsets.UTF_8.name()));
             helper.setSubject(subject);
-            helper.setText(body, false); // pon true si quieres HTML
+            helper.setText(body, false); 
 
             mailSender.send(mime);
 
         } catch (Exception e) {
-            // loguea si quieres
+            
             e.printStackTrace();
         }
     }
@@ -81,7 +81,7 @@ public class EmailService {
         if (user == null || user.getEmail() == null || user.getEmail().isBlank()) return;
 
         try {
-            String subject = "⏰ Tarea próxima a vencer: " + safe(task.getTitle());
+            String subject = " Tarea próxima a vencer: " + safe(task.getTitle());
             String due = task.getDueDate() != null
                     ? task.getDueDate().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))
                     : "sin fecha";
@@ -121,12 +121,12 @@ public class EmailService {
         }
     }
 
-    /** ⚠️ Aviso: tarea vencida */
+    /**  Aviso: tarea vencida */
     public void sendOverdue(User user, Task task) {
         if (user == null || user.getEmail() == null || user.getEmail().isBlank()) return;
 
         try {
-            String subject = "⚠️ Tarea vencida: " + safe(task.getTitle());
+            String subject = " Tarea vencida: " + safe(task.getTitle());
             String due = task.getDueDate() != null
                     ? task.getDueDate().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))
                     : "sin fecha";

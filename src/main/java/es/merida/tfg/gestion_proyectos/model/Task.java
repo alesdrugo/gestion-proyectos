@@ -16,7 +16,7 @@ public class Task {
     private Long id;
 
     @Column(nullable = true)
-    private Integer taskNumber; // ✅ Integer en lugar de int (permite null antes de guardar)
+    private Integer taskNumber; 
 
     @Column(nullable = false)
     private String title;
@@ -30,12 +30,12 @@ public class Task {
     @DateTimeFormat(pattern = "yyyy-MM-dd")
     private LocalDate dueDate;
 
-    // ✅ Relación N tareas → 1 proyecto
+    // Relación N tareas -> 1 proyecto
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "project_id", nullable = false)
     private Project project;
 
-    // ✅ Relación N tareas → 1 usuario asignado
+    // Relación N tareas -> 1 usuario asignado
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "assigned_user_id")
     private User assignedUser;

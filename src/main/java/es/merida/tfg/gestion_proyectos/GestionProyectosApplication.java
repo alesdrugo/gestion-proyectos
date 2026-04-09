@@ -11,6 +11,6 @@ public class GestionProyectosApplication {
 
     public static void main(String[] args) {
         SpringApplication.run(GestionProyectosApplication.class, args);
-        System.out.println("🚀 Aplicación iniciada SIN configuración automática de seguridad");
+        System.out.println("Aplicación iniciada");
     }
 }

@@ -31,7 +31,7 @@ public class ProjectController {
 
         addCommonAttributes(model, session, username);
 
-        // Admin no debería operar proyectos; si entra aquí, lo llevamos al panel admin (cuando exista)
+        
         if (Authz.hasRole(session, "ROLE_ADMIN")) {
             return "redirect:/admin/users";
         }
@@ -64,7 +64,7 @@ public class ProjectController {
         Long teamId = Authz.teamId(session);
         if (teamId == null) return "redirect:/pending";
 
-        // 🔒 No confiar en el team que venga del formulario
+
         Team team = teamRepository.findById(teamId)
                 .orElseThrow(() -> new IllegalArgumentException("Equipo no encontrado"));
 

@@ -34,7 +34,7 @@
         </select>
       </div>
 
-      <!-- ✅ Filtro por asignado: solo manager -->
+      <!-- Filtro por asignado: solo manager -->
       <div class="col-auto" th:if="${isManager}">
         <select class="form-select form-select-sm" name="assigneeId">
           <option value="" th:selected="${filterAssigneeId == null}">Cualquiera</option>
@@ -85,7 +85,7 @@
                 <td th:text="${task.title}">Título</td>
                 <td th:text="${task.description}">Descripción</td>
 
-                <!-- ✅ Mostrar asignado -->
+                <!-- Mostrar asignado -->
                 <td class="text-center"
                     th:text="${task.assignedUser != null ? task.assignedUser.username : '-'}">-</td>
 
@@ -104,7 +104,7 @@
                   <a th:href="@{'/tasks/view/' + ${task.id}}"
                      class="btn btn-sm btn-outline-info me-1">👁 Ver</a>
 
-                  <!-- ✅ Marcar completada: manager o asignado -->
+                  <!-- Marcar completada: manager o asignado -->
                   <form class="d-inline"
                         th:if="${isManager or (task.assignedUser != null and task.assignedUser.username == username)}"
                         th:action="@{'/tasks/toggle/' + ${task.id}}"
@@ -115,7 +115,7 @@
                     </button>
                   </form>
 
-                  <!-- ✅ Editar/Borrar solo manager -->
+                  <!-- Editar/Borrar solo manager -->
                   <span th:if="${isManager}">
                     <a th:href="@{'/tasks/edit/' + ${task.id}}"
                        class="btn btn-sm btn-outline-warning ms-1">✏️ Editar</a>
@@ -137,7 +137,7 @@
                   </div>
                   <div th:if="${task.attachmentPath == null}" class="text-muted">–</div>
 
-                  <!-- ✅ Subir documentación solo manager -->
+                  <!-- Subir documentación solo manager -->
                   <form th:if="${isManager}"
                         th:action="@{'/tasks/' + ${task.id} + '/upload'}"
                         method="post"

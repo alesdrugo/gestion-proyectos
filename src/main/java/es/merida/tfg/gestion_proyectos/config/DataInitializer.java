@@ -17,7 +17,7 @@ public class DataInitializer {
     @Bean
     CommandLineRunner initDatabase(UserRepository userRepository,
                                    RoleRepository roleRepository,
-                                   TeamRepository teamRepository,              // 👈
+                                   TeamRepository teamRepository,              
                                    ProjectRepository projectRepository,
                                    TaskRepository taskRepository,
                                    TaskCommentRepository taskCommentRepository,
@@ -27,7 +27,7 @@ public class DataInitializer {
             Role adminRole = roleRepository.findByName("ROLE_ADMIN")
                     .orElseGet(() -> roleRepository.save(newRole("ROLE_ADMIN")));
 
-            Role managerRole = roleRepository.findByName("ROLE_MANAGER")      // 👈
+            Role managerRole = roleRepository.findByName("ROLE_MANAGER")      
                     .orElseGet(() -> roleRepository.save(newRole("ROLE_MANAGER")));
 
             Role userRole = roleRepository.findByName("ROLE_USER")
@@ -78,7 +78,7 @@ public class DataInitializer {
                 p1.setStatus("En curso");
                 p1.setStartDate(LocalDate.now().minusDays(7));
                 p1.setEndDate(LocalDate.now().plusMonths(1));
-                p1.setTeam(demoTeam);                      // 👈 obligatorio
+                p1.setTeam(demoTeam);                      
                 p1 = projectRepository.save(p1);
 
                 Project p2 = new Project();
@@ -87,7 +87,7 @@ public class DataInitializer {
                 p2.setStatus("Planificado");
                 p2.setStartDate(LocalDate.now());
                 p2.setEndDate(LocalDate.now().plusMonths(2));
-                p2.setTeam(demoTeam);                      // 👈 obligatorio
+                p2.setTeam(demoTeam);                      
                 p2 = projectRepository.save(p2);
 
                 createTask(taskRepository, p1,
@@ -158,7 +158,7 @@ public class DataInitializer {
                             User assignee,
                             String attachmentUrl) {
 
-        // 👇 cambiaremos el método de TaskRepository en el siguiente bloque
+        
         int next = taskRepository.findMaxTaskNumberByProjectId(project.getId()) + 1;
 
         Task t = new Task();

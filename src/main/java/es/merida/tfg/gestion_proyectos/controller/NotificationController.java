@@ -61,7 +61,6 @@ public class NotificationController {
 
         User user = optUser.get();
 
-        // Aquí idealmente marcas SOLO si la notificación es del usuario
         notificationService.markAsRead(user, id);
 
         return "redirect:/notifications";

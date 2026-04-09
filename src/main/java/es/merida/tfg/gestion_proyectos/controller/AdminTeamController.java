@@ -105,7 +105,7 @@ public class AdminTeamController {
         long users = userRepository.countByTeamId(id);
         long projects = projectRepository.countByTeamId(id);
 
-        // ✅ Recomendación: NO borrar equipos con datos (evitas líos por FK y pérdidas)
+
         if (users > 0 || projects > 0) {
             return "redirect:/admin/teams?error=not_empty";
         }

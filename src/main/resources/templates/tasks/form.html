@@ -61,7 +61,7 @@
             <label for="completed" class="form-check-label">Completada</label>
           </div>
 
-          <!-- Asignar usuario (solo admin) -->
+          <!-- Asignar usuario (solo manager) -->
           <div th:if="${isManager}" class="mb-3">
             <label for="assignedUser" class="form-label">Asignar a usuario</label>
             <select id="assignedUser" class="form-select" th:field="*{assignedUser.id}">

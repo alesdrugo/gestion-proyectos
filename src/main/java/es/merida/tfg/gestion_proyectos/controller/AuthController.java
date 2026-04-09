@@ -41,7 +41,7 @@ public class AuthController {
             return "login";
         }
 
-        // Regenerar sesión (lo que te comentó Codex, bien por seguridad)
+        
         session.invalidate();
         HttpSession newSession = request.getSession(true);
 
@@ -58,15 +58,15 @@ public class AuthController {
         var roleNames = user.getRoles().stream().map(r -> r.getName()).toList();
         newSession.setAttribute("roles", roleNames);
 
-        // Guardar teamId (o null)
+        // Guardar teamId 
         Long teamId = (user.getTeam() != null) ? user.getTeam().getId() : null;
         newSession.setAttribute("teamId", teamId);
 
-        // Compatibilidad temporal (si quieres seguir usando isAdmin en alguna vista)
+     
         boolean isAdmin = roleNames.stream().anyMatch(r -> r.equalsIgnoreCase("ROLE_ADMIN"));
         newSession.setAttribute("isAdmin", isAdmin);
 
-        // Estado PENDING (LIMBO): sin equipo o sin roles
+        // Estado PENDING 
         boolean isPending = (teamId == null) || roleNames.isEmpty();
         if (isPending && !isAdmin) {
             return "redirect:/pending";

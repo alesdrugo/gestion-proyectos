@@ -26,7 +26,6 @@ public class GlobalModelAttributes {
     @ModelAttribute
     public void addGlobalAttributes(Model model, HttpSession session) {
 
-        // Defaults "a prueba de null" (evita petes en Thymeleaf)
         model.addAttribute("username", null);
         model.addAttribute("roles", List.of());
         model.addAttribute("teamId", null);
@@ -42,7 +41,7 @@ public class GlobalModelAttributes {
         String username = (String) session.getAttribute("username");
         if (username == null) return;
 
-        // Roles y teamId desde sesión (rápido y consistente con tu AuthController)
+        // Roles y teamId desde sesión 
         List<String> roles = Authz.roles(session);
         Long teamId = Authz.teamId(session);
 
@@ -55,7 +54,7 @@ public class GlobalModelAttributes {
         model.addAttribute("isAdmin", isAdmin);
         model.addAttribute("isManager", isManager);
 
-        // Notificaciones: aquí sí necesitamos el User real
+        // Notificaciones
         User user = userService.findByUsername(username).orElse(null);
         if (user == null) return;
 
